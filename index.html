@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bugema University Hostel Reservation</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- New Header Area -->
+    <header class="main-header">
+        <div class="header-logo">
+            <img src="images/logo.png" alt="BU Logo" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/0/0b/Bugema_logo.png';">
+        </div>
+        <h1 class="header-title">BU ROOM RESERVATION SYSTEM</h1>
+        <nav class="center-nav">
+            <ul class="nav-links">
+                <li><a href="#" class="nav-item active" onclick="showSection('home')">Home</a></li>
+                <li><a href="#" class="nav-item" onclick="showSection('hostels')">View Hostels</a></li>
+                <li><a href="#" class="nav-item" onclick="showSection('inquiry')">Inquiry</a></li>
+                <li class="nav-separator">|</li>
+                <li><a href="#" class="nav-btn nav-btn-outline" onclick="showSection('login')">Login</a></li>
+                <li><a href="#" class="nav-btn nav-btn-solid" onclick="showSection('create-account')">Create Account</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Main Content Area -->
+    <main id="main-content">
+        <!-- Home Section -->
+        <section id="home" class="page-section active">
+            <!-- Hero Section -->
+            <div class="hero">
+                <div class="hero-content">
+                    <h1>Find Your Perfect Place on Campus</h1>
+                    <p>Browse, compare and reserve student accommodation — all in one place.</p>
+                    <div class="hero-buttons">
+                        <button class="hero-btn primary" onclick="showSection('hostels')">View Hostels</button>
+                        <button class="hero-btn outline" onclick="showSection('create-account')">Create Account &rarr;</button>
+                    </div>
+                </div>
+                
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <h3>12</h3>
+                        <p>Hostels Available</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>850+</h3>
+                        <p>Students Housed</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>24/7</h3>
+                        <p>Support Service</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Features Section -->
+            <div class="features-section">
+                <h4 class="features-title">WHY CHOOSE US</h4>
+                <div class="features-container">
+                    <div class="feature-card">
+                        <div class="f-icon">🔍</div>
+                        <h3>Easy Search</h3>
+                        <p>Filter by gender and price.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="f-icon">⚡</div>
+                        <h3>Instant Booking</h3>
+                        <p>Reserve your room online.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="f-icon">🛡️</div>
+                        <h3>Safe & Secure</h3>
+                        <p>24-hour security, CCTV.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="f-icon">📶</div>
+                        <h3>Wi-Fi Included</h3>
+                        <p>High-speed internet.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Hostels Listing Section -->
+        <section id="hostels" class="page-section">
+            <div class="hostels-hero">
+                <h2>Available Hostels</h2>
+                <p>Browse and book your preferred student accommodation</p>
+            </div>
+
+            <div class="advanced-filter-bar">
+                <div class="search-row">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" placeholder="Search hostels by name..." oninput="filterHostels()">
+                </div>
+                <div class="filter-row">
+                    <label>Category: 
+                        <select id="typeFilter" onchange="filterHostels()">
+                            <option value="all">All Hostels</option>
+                            <option value="university">University Hostels</option>
+                            <option value="private">Private Hostels</option>
+                        </select>
+                    </label>
+                    <label>Gender: 
+                        <select id="genderFilter" onchange="filterHostels()">
+                            <option value="all">All Genders</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Mixed">Mixed</option>
+                        </select>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="hostels-content" id="hostels-list">
+                <!-- Hostels dynamically injected here grouped by category -->
+            </div>
+        </section>
+
+        <!-- Inquiry Section -->
+        <section id="inquiry" class="page-section">
+            <div class="contact-container">
+                <div class="contact-info">
+                    <h2>Inquiry & Feedback</h2>
+                    <p>Have a question or want to give feedback? Reach out anytime</p>
+                    
+                    <div class="info-item">
+                        <span class="info-icon">LOC</span>
+                        <div class="info-text">
+                            <strong>Location</strong>
+                            <p>Bugema University, Gayaza Zirobwe Road, Uganda</p>
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <span class="info-icon">TEL</span>
+                        <div class="info-text">
+                            <strong>Phone</strong>
+                            <p>+256 414 287 800 / +256 772 123 456</p>
+                        </div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <span class="info-icon">@</span>
+                        <div class="info-text">
+                            <strong>Email</strong>
+                            <p>hostels@bugema.ac.ug</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-container" style="max-width: 100%; margin: 0;">
+                    <h2>Drop us a message</h2>
+                    <form id="inquiryForm" class="vertical-form">
+                        <label for="inqName">Name</label>
+                        <input type="text" id="inqName" required>
+
+                        <label for="inqEmail">Email</label>
+                        <input type="email" id="inqEmail" required>
+
+                        <label for="inqType">Message Type</label>
+                        <select id="inqType" required onchange="toggleRatingField()">
+                            <option value="inquiry">General Inquiry</option>
+                            <option value="feedback">System Feedback / Rating</option>
+                        </select>
+
+                        <div id="ratingSection" style="display: none; margin-top: 1rem;">
+                            <label for="inqRating">Rating (1-5)</label>
+                            <input type="number" id="inqRating" min="1" max="5" placeholder="e.g. 5">
+                        </div>
+
+                        <label for="inqMessage">Message or Feedback</label>
+                        <textarea id="inqMessage" rows="5" required></textarea>
+
+                        <button type="submit" class="primary-btn">Send Message</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- Login Section -->
+        <section id="login" class="page-section">
+            <div class="form-container">
+                <h2>Welcome Back</h2>
+                <p style="margin-top: 5px; margin-bottom: 25px; color: #64748b; font-size: 0.95rem;">Sign in to your BU Hostel account</p>
+                <form id="loginForm" class="vertical-form">
+                    <div class="auth-tabs">
+                        <button type="button" class="auth-tab active" onclick="switchLoginTab('student')" id="tab-student">Student</button>
+                        <button type="button" class="auth-tab" onclick="switchLoginTab('admin')" id="tab-admin">Admin</button>
+                    </div>
+
+                    <input type="hidden" id="loginRole" value="student">
+
+                    <label for="loginName" id="lblLoginName">Phone Number</label>
+                    <input type="text" id="loginName" placeholder="e.g. 0712345678" required>
+
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" placeholder="e.g. studentpass123" required>
+
+                    <button type="submit" class="primary-btn black-btn">Sign In</button>
+                    <p class="form-footer-text">No account? <a href="#" onclick="showSection('create-account')">Create one here</a></p>
+                </form>
+            </div>
+        </section>
+
+        <!-- Create Account Section -->
+        <section id="create-account" class="page-section">
+            <div class="form-container">
+                <h2>Create Account</h2>
+                <p style="margin-bottom: 20px; font-size: 0.95rem; color: #64748b;">Join BU Online Hostel Booking</p>
+                <form id="createAccountForm" class="vertical-form">
+                    
+                    <h3 class="form-section-heading">PERSONAL DETAILS</h3>
+                    <label for="regName">Name</label>
+                    <input type="text" id="regName" placeholder="e.g. John Mukasa" required>
+
+                    <label for="regEmail">Email Address</label>
+                    <input type="email" id="regEmail" placeholder="e.g. john.mukasa@gmail.com" required>
+
+                    <label for="regPhone">Phone Number</label>
+                    <input type="tel" id="regPhone" placeholder="e.g. 0712345678" required>
+                    
+                    <h3 class="form-section-heading">ACADEMIC INFO</h3>
+                    <label for="regGender">Gender</label>
+                    <select id="regGender" required>
+                        <option value="">Select gender</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                    
+                    <label for="regCourse">Course / Programme</label>
+                    <select id="regCourse" required>
+                        <option value="">Select course</option>
+                        <option value="Bsc Computer Science">Bsc Computer Science</option>
+                        <option value="Bsc Information Technology">Bsc Information Technology</option>
+                        <option value="Business Administration">Business Administration</option>
+                        <option value="Nursing">Nursing</option>
+                        <option value="Theology">Theology</option>
+                        <option value="Other">Other</option>
+                    </select>
+
+                    <h3 class="form-section-heading">SECURITY</h3>
+                    <label for="regPassword">Password</label>
+                    <input type="password" id="regPassword" minlength="8" placeholder="e.g. SecurePass123! (Min 8 characters)" required>
+                    
+                    <label for="regConfirmPassword">Confirm Password</label>
+                    <input type="password" id="regConfirmPassword" minlength="8" placeholder="e.g. SecurePass123!" required>
+
+                    <button type="submit" class="primary-btn black-btn">Create Account</button>
+                    <p class="form-footer-text">Already have an account? <a href="#" onclick="showSection('login')">Sign in</a></p>
+                </form>
+            </div>
+        </section>
+    </main>
+
+    <!-- Reservation Modal -->
+    <div id="reservationModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <h2 id="modalHostelName">Reserve a Room</h2>
+            <form id="reservationForm" class="vertical-form">
+                <input type="hidden" id="selectedHostelId">
+                
+                <label for="resName">Full Name</label>
+                <input type="text" id="resName" required>
+
+                <label for="resStudentId">Student ID</label>
+                <input type="text" id="resStudentId" required>
+
+                <label for="resGender">Gender</label>
+                <select id="resGender" required>
+                    <option value="">Select Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                </select>
+
+                <label for="resRoomType">Room Type</label>
+                <select id="resRoomType" required>
+                    <option value="single">Single Room</option>
+                    <option value="double">Double Room</option>
+                    <option value="mixed">Mixed Shared</option>
+                </select>
+                
+                <div class="deposit-section">
+                    <h3>Payment Details</h3>
+                    <p style="margin-bottom: 10px;">A 50% deposit is required to secure your booking.</p>
+                    
+                    <label for="paymentMethod">Payment Method</label>
+                    <select id="paymentMethod" onchange="togglePaymentFields()" required>
+                        <option value="">Select Method</option>
+                        <option value="mobile_money">Mobile Money (Direct Prompt)</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                        <option value="upload_receipt">I have already paid (Upload Receipt)</option>
+                    </select>
+
+                    <!-- Mobile Money Details -->
+                    <div id="mobileMoneyDetails" style="display: none; margin-top: 1rem;">
+                        <label for="mmNumber">Mobile Money Number</label>
+                        <input type="tel" id="mmNumber" placeholder="e.g. 0772123456">
+                        <p style="font-size: 0.85rem; color: #64748b; margin-top: 0.5rem; line-height: 1.4;">Enter your number and click Confirm. You will receive a prompt on your phone to enter your PIN and complete the deposit.</p>
+                    </div>
+
+                    <!-- Bank Transfer Details -->
+                    <div id="bankDetails" style="display: none; margin-top: 1rem; background: #ffffff; padding: 1rem; border-left: 4px solid #3b82f6; border-radius: 4px; border: 1px solid #e2e8f0;">
+                        <h4 style="margin-bottom: 0.5rem; color: #1e3a8a; font-size: 0.95rem;">University Bank Details</h4>
+                        <p style="font-size: 0.9rem; margin-bottom: 0.2rem;"><strong>Bank:</strong> Centenary Bank</p>
+                        <p style="font-size: 0.9rem; margin-bottom: 0.2rem;"><strong>Account Name:</strong> Bugema University Hostels</p>
+                        <p style="font-size: 0.9rem; margin-bottom: 0.8rem;"><strong>Account Number:</strong> 3100012345000</p>
+                        <p style="font-size: 0.85rem; color: #64748b; line-height: 1.4;">Please transfer your 50% deposit to the account above, then upload your receipt below to verify.</p>
+                    </div>
+
+                    <!-- Upload Receipt Section -->
+                    <div id="receiptSection" style="display: none; margin-top: 1rem;">
+                        <label for="receiptUpload">Upload Receipt (PDF/Image)</label>
+                        <input type="file" id="receiptUpload" accept=".pdf, image/*">
+                    </div>
+                </div>
+
+                <button type="submit" class="primary-btn">Confirm Reservation</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- View Rooms Modal -->
+    <div id="viewRoomsModal" class="modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <span class="close-modal" onclick="closeRoomsModal()">&times;</span>
+            <h2 id="roomsModalHostelName">Available Rooms</h2>
+            <div id="roomsContainer" class="rooms-container">
+                <!-- Rooms dynamically injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2026 Bugema University Hostel Reservation System.</p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
