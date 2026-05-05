@@ -153,7 +153,7 @@ main {
     left: 0;
     width: 60%;
     height: 100%;
-    background-image: url('IMAGES/home.png');
+    background-image: url('/IMAGES/home.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -169,7 +169,7 @@ main {
     right: 0;
     width: 60%;
     height: 100%;
-    background-image: url('IMAGES/home2.png');
+    background-image: url('/IMAGES/home2.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -886,7 +886,7 @@ main {
 
 /* Background Images for Pages */
 #inquiry {
-    background-image: url('IMAGES/home2.png');
+    background-image: url('/IMAGES/home2.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -894,7 +894,7 @@ main {
 }
 
 #login {
-    background-image: url('IMAGES/home2.png');
+    background-image: url('/IMAGES/home2.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -902,7 +902,7 @@ main {
 }
 
 #create-account {
-    background-image: url('IMAGES/home2.png');
+    background-image: url('/IMAGES/home2.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -958,7 +958,7 @@ main {
 
 /* Admin Panel Professional Styling */
 #admin-panel {
-    background-image: url('IMAGES/home2.png');
+    background-image: url('/IMAGES/home2.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -1249,7 +1249,7 @@ main {
 
 /* Hostels Page Background - Clean approach */
 #hostels {
-    background-image: url('IMAGES/home2.png');
+    background-image: url('/IMAGES/home2.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -1444,210 +1444,4 @@ footer {
     color: #64748b;
     margin-bottom: 2rem;
     font-size: 0.95rem;
-}
-
-.info-item {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    align-items: flex-start;
-}
-
-.info-icon {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #3b82f6;
-    background: #f0f7ff;
-    width: 45px;
-    height: 45px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.info-text strong {
-    display: block;
-    color: #1e3a8a;
-    font-size: 0.95rem;
-    margin-bottom: 0.2rem;
-}
-
-.info-text p {
-    color: #475569;
-    font-size: 0.9rem;
-    margin: 0;
-}
-
-/* Admin Panel Styles */
-.admin-layout {
-    display: flex;
-    min-height: calc(100vh - 150px);
-    width: 100%;
-    border: 1px solid #000;
-}
-
-.admin-sidebar {
-    width: 250px;
-    background-color: #ffffff;
-    border-right: 1px solid #000;
-    display: flex;
-    flex-direction: column;
-}
-
-.admin-header {
-    padding: 1.5rem;
-    border-bottom: 1px solid #000;
-}
-
-.admin-header h2 {
-    font-size: 1rem;
-    color: #000;
-    margin: 0;
-    letter-spacing: 0.5px;
-}
-
-.admin-nav {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.admin-nav-item {
-    display: block;
-    padding: 1rem 1.5rem;
-    color: #333;
-    font-weight: 500;
-    transition: background 0.2s, color 0.2s;
-    border-bottom: 1px solid #000;
-}
-
-.admin-nav-item:hover {
-    background-color: #f8fafc;
-}
-
-.admin-nav-item.active {
-    background-color: #000;
-    color: #fff;
-}
-
-.admin-main {
-    flex: 1;
-    background-color: #fff;
-    padding: 1rem;
-    overflow-y: auto;
-}
-
-.admin-tab-content {
-    display: none;
-}
-
-.admin-tab-content.active {
-    display: block;
-    animation: fadeIn 0.3s ease-in-out;
-}
-
-.admin-top-bar {
-    margin-bottom: 1rem;
-    border: 1px solid #000;
-    padding: 1rem;
-    background: #fff;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.admin-top-bar h2 {
-    margin: 0;
-    color: #000;
-    font-size: 1.2rem;
-    font-weight: 700;
-}
-
-/* Dashboard Cards */
-.admin-dashboard-cards {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-}
-
-.admin-card {
-    background: #fff;
-    border: 1px solid #000;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 1.5rem;
-    box-shadow: none;
-}
-
-.admin-card .card-title {
-    font-size: 0.9rem;
-    color: #000;
-    margin-bottom: 0.5rem;
-}
-
-.admin-card strong {
-    font-size: 2rem;
-    color: #000;
-    line-height: 1;
-    margin-bottom: 0.5rem;
-}
-
-.admin-card .card-desc {
-    font-size: 0.8rem;
-    color: #64748b;
-}
-
-.admin-recent-activity {
-    border: 1px solid #000;
-    padding: 1rem;
-    background: #fff;
-}
-
-.admin-recent-activity h3 {
-    margin-bottom: 1rem;
-    font-size: 1.1rem;
-    color: #000;
-    font-weight: 700;
-}
-
-.admin-table {
-    width: 100%;
-    background: #fff;
-    border-collapse: collapse;
-    border: 1px solid #000;
-}
-
-.admin-table th, .admin-table td {
-    padding: 0.75rem 1rem;
-    text-align: left;
-    border: 1px solid #000;
-    font-size: 0.9rem;
-}
-
-.admin-table th {
-    background-color: #f1f5f9;
-    color: #000;
-    font-weight: 700;
-}
-
-.admin-table td {
-    color: #000;
-}
-
-.action-btn {
-    background: #fff;
-    border: 1px solid #cbd5e1;
-    padding: 0.25rem 0.5rem;
-    margin-right: 0.25rem;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 0.8rem;
-}
-
-.action-btn:hover {
-    background: #f1f5f9;
 }

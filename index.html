@@ -19,9 +19,10 @@
                 <li><a href="#" class="nav-item active" onclick="showSection('home')">Home</a></li>
                 <li><a href="#" class="nav-item" onclick="showSection('hostels')">View Hostels</a></li>
                 <li><a href="#" class="nav-item" onclick="showSection('inquiry')">Inquiry</a></li>
-                <li class="nav-separator">|</li>
-                <li><a href="#" class="nav-btn nav-btn-outline" onclick="showSection('login')">Login</a></li>
-                <li><a href="#" class="nav-btn nav-btn-solid" onclick="showSection('create-account')">Create Account</a></li>
+                <li id="nav-login"><a href="#" class="nav-btn nav-btn-outline" onclick="showSection('login')">Sign In</a></li>
+                <li id="nav-create-account"><a href="#" class="nav-btn nav-btn-solid" onclick="showSection('create-account')">Sign Up</a></li>
+                <li id="nav-admin" style="display: none;"><a href="#" class="nav-item nav-btn-solid" onclick="showSection('admin-panel')" style="background-color: #000; color: #fff; padding: 0.5rem 1rem; border-radius: 4px;">Admin Panel</a></li>
+                <li id="nav-logout" style="display: none;"><a href="#" class="nav-btn nav-btn-outline" onclick="logout()">Logout</a></li>
             </ul>
         </nav>
     </header>
@@ -32,28 +33,23 @@
         <section id="home" class="page-section active">
             <!-- Hero Section -->
             <div class="hero">
+                <!-- Floating Background Images -->
+                <div class="floating-bg">
+                    <img src="IMAGES/home.png" class="float-img img-1" alt="Floating Home 1">
+                    <img src="IMAGES/home2.png" class="float-img img-2" alt="Floating Home 2">
+                </div>
+
                 <div class="hero-content">
                     <h1>Find Your Perfect Place on Campus</h1>
                     <p>Browse, compare and reserve student accommodation — all in one place.</p>
                     <div class="hero-buttons">
                         <button class="hero-btn primary" onclick="showSection('hostels')">View Hostels</button>
-                        <button class="hero-btn outline" onclick="showSection('create-account')">Create Account &rarr;</button>
+                        <button class="hero-btn outline" onclick="showSection('create-account')">Sign Up &rarr;</button>
                     </div>
                 </div>
                 
                 <div class="stats-container">
-                    <div class="stat-card">
-                        <h3>12</h3>
-                        <p>Hostels Available</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>850+</h3>
-                        <p>Students Housed</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>24/7</h3>
-                        <p>Support Service</p>
-                    </div>
+                    <!-- Stats removed per request -->
                 </div>
             </div>
 
@@ -123,61 +119,51 @@
 
         <!-- Inquiry Section -->
         <section id="inquiry" class="page-section">
-            <div class="contact-container">
-                <div class="contact-info">
-                    <h2>Inquiry & Feedback</h2>
-                    <p>Have a question or want to give feedback? Reach out anytime</p>
-                    
-                    <div class="info-item">
-                        <span class="info-icon">LOC</span>
-                        <div class="info-text">
-                            <strong>Location</strong>
-                            <p>Bugema University, Gayaza Zirobwe Road, Uganda</p>
-                        </div>
-                    </div>
-                    
-                    <div class="info-item">
-                        <span class="info-icon">TEL</span>
-                        <div class="info-text">
-                            <strong>Phone</strong>
-                            <p>+256 414 287 800 / +256 772 123 456</p>
-                        </div>
-                    </div>
-                    
-                    <div class="info-item">
-                        <span class="info-icon">@</span>
-                        <div class="info-text">
-                            <strong>Email</strong>
-                            <p>hostels@bugema.ac.ug</p>
-                        </div>
+            <div class="feedback-layout">
+                <!-- Left Side -->
+                <div class="feedback-left">
+                    <div class="form-container">
+                        <h2>Drop us a message</h2>
+                        <form id="inquiryForm" class="vertical-form">
+                            <label for="inqName">Name</label>
+                            <input type="text" id="inqName" required>
+
+                            <label for="inqEmail">Email</label>
+                            <input type="email" id="inqEmail" required>
+
+                            <label for="inqHostel">Select Hostel</label>
+                            <select id="inqHostel" required>
+                            </select>
+
+                            <label for="inqType">Message Type</label>
+                            <select id="inqType" required onchange="toggleRatingField()">
+                                <option value="inquiry">General Inquiry</option>
+                                <option value="feedback">System Feedback / Rating</option>
+                            </select>
+
+                            <div id="ratingSection" style="display: none; margin-top: 1rem;">
+                                <label for="inqRating">Rating (1-5)</label>
+                                <input type="number" id="inqRating" min="1" max="5" placeholder="e.g. 5">
+                            </div>
+
+                            <label for="inqMessage">Message or Feedback</label>
+                            <textarea id="inqMessage" rows="5" required></textarea>
+
+                            <button type="submit" class="primary-btn">Send Message</button>
+                        </form>
                     </div>
                 </div>
 
-                <div class="form-container" style="max-width: 100%; margin: 0;">
-                    <h2>Drop us a message</h2>
-                    <form id="inquiryForm" class="vertical-form">
-                        <label for="inqName">Name</label>
-                        <input type="text" id="inqName" required>
-
-                        <label for="inqEmail">Email</label>
-                        <input type="email" id="inqEmail" required>
-
-                        <label for="inqType">Message Type</label>
-                        <select id="inqType" required onchange="toggleRatingField()">
-                            <option value="inquiry">General Inquiry</option>
-                            <option value="feedback">System Feedback / Rating</option>
-                        </select>
-
-                        <div id="ratingSection" style="display: none; margin-top: 1rem;">
-                            <label for="inqRating">Rating (1-5)</label>
-                            <input type="number" id="inqRating" min="1" max="5" placeholder="e.g. 5">
+                <!-- Right Side -->
+                <div class="feedback-right">
+                    <!-- Caretakers Contact Section -->
+                    <div class="caretakers-contact">
+                        <h3>Hostel Caretakers</h3>
+                        <p>Contact any of our hostel caretakers for immediate assistance</p>
+                        <div class="caretakers-grid" id="caretakersList">
+                            <!-- Caretakers will be dynamically loaded here -->
                         </div>
-
-                        <label for="inqMessage">Message or Feedback</label>
-                        <textarea id="inqMessage" rows="5" required></textarea>
-
-                        <button type="submit" class="primary-btn">Send Message</button>
-                    </form>
+                    </div>
                 </div>
             </div>
         </section>
@@ -196,13 +182,46 @@
                     <input type="hidden" id="loginRole" value="student">
 
                     <label for="loginName" id="lblLoginName">Phone Number</label>
-                    <input type="text" id="loginName" placeholder="e.g. 0712345678" required>
+                    <div style="display: flex; gap: 10px;">
+                        <select id="loginCountryCode" required style="width: 30%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 4px;">
+                            <option value="">Select Country</option>
+                            <optgroup label="East Africa">
+                                <option value="+256" selected>🇺🇬 Uganda (+256)</option>
+                                <option value="+250">🇷🇼 Rwanda (+250)</option>
+                                <option value="+255">🇹🇿 Tanzania (+255)</option>
+                                <option value="+254">🇰🇪 Kenya (+254)</option>
+                                <option value="+211">🇸🇸 South Sudan (+211)</option>
+                                <option value="+257">🇧🇮 Burundi (+257)</option>
+                            </optgroup>
+                            <optgroup label="West Africa">
+                                <option value="+234">🇳🇬 Nigeria (+234)</option>
+                                <option value="+233">🇬🇭 Ghana (+233)</option>
+                                <option value="+225">🇨🇮 Côte d'Ivoire (+225)</option>
+                                <option value="+229">🇧🇯 Benin (+229)</option>
+                            </optgroup>
+                            <optgroup label="Southern Africa">
+                                <option value="+27">🇿🇦 South Africa (+27)</option>
+                                <option value="+263">🇿🇼 Zimbabwe (+263)</option>
+                                <option value="+260">🇿🇲 Zambia (+260)</option>
+                                <option value="+265">🇲🇼 Malawi (+265)</option>
+                            </optgroup>
+                            <optgroup label="International">
+                                <option value="+1">🇺🇸 United States (+1)</option>
+                                <option value="+44">🇬🇧 United Kingdom (+44)</option>
+                                <option value="+33">🇫🇷 France (+33)</option>
+                                <option value="+49">🇩🇪 Germany (+49)</option>
+                                <option value="+91">🇮🇳 India (+91)</option>
+                                <option value="+86">🇨🇳 China (+86)</option>
+                            </optgroup>
+                        </select>
+                        <input type="text" id="loginName" placeholder="e.g. 712345678" style="flex: 1;" required>
+                    </div>
 
                     <label for="loginPassword">Password</label>
                     <input type="password" id="loginPassword" placeholder="e.g. studentpass123" required>
 
                     <button type="submit" class="primary-btn black-btn">Sign In</button>
-                    <p class="form-footer-text">No account? <a href="#" onclick="showSection('create-account')">Create one here</a></p>
+                    <p class="form-footer-text">No account? <a href="#" onclick="showSection('create-account')">Sign up here</a></p>
                 </form>
             </div>
         </section>
@@ -210,7 +229,7 @@
         <!-- Create Account Section -->
         <section id="create-account" class="page-section">
             <div class="form-container">
-                <h2>Create Account</h2>
+                <h2>Sign Up</h2>
                 <p style="margin-bottom: 20px; font-size: 0.95rem; color: #64748b;">Join BU Online Hostel Booking</p>
                 <form id="createAccountForm" class="vertical-form">
                     
@@ -222,7 +241,79 @@
                     <input type="email" id="regEmail" placeholder="e.g. john.mukasa@gmail.com" required>
 
                     <label for="regPhone">Phone Number</label>
-                    <input type="tel" id="regPhone" placeholder="e.g. 0712345678" required>
+                    <div style="display: flex; gap: 10px;">
+                        <select id="regCountryCode" required style="width: 30%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 4px;">
+                            <option value="">Select Country</option>
+                            <optgroup label="East Africa">
+                                <option value="+256" selected>🇺🇬 Uganda (+256)</option>
+                                <option value="+250">🇷🇼 Rwanda (+250)</option>
+                                <option value="+255">🇹🇿 Tanzania (+255)</option>
+                                <option value="+254">🇰🇪 Kenya (+254)</option>
+                                <option value="+211">🇸🇸 South Sudan (+211)</option>
+                                <option value="+257">🇧🇮 Burundi (+257)</option>
+                            </optgroup>
+                            <optgroup label="West Africa">
+                                <option value="+234">🇳🇬 Nigeria (+234)</option>
+                                <option value="+233">🇬🇭 Ghana (+233)</option>
+                                <option value="+225">🇨🇮 Côte d'Ivoire (+225)</option>
+                                <option value="+229">🇧🇯 Benin (+229)</option>
+                            </optgroup>
+                            <optgroup label="Southern Africa">
+                                <option value="+27">🇿🇦 South Africa (+27)</option>
+                                <option value="+263">🇿🇼 Zimbabwe (+263)</option>
+                                <option value="+260">🇿🇲 Zambia (+260)</option>
+                                <option value="+265">🇲🇼 Malawi (+265)</option>
+                            </optgroup>
+                            <optgroup label="International">
+                                <option value="+1">🇺🇸 United States (+1)</option>
+                                <option value="+44">🇬🇧 United Kingdom (+44)</option>
+                                <option value="+33">🇫🇷 France (+33)</option>
+                                <option value="+49">🇩🇪 Germany (+49)</option>
+                                <option value="+91">🇮🇳 India (+91)</option>
+                                <option value="+86">🇨🇳 China (+86)</option>
+                            </optgroup>
+                        </select>
+                        <input type="tel" id="regPhone" placeholder="e.g. 712345678" style="flex: 1;" required>
+                    </div>
+
+                    <label for="regKinName">Next of Kin Name</label>
+                    <input type="text" id="regKinName" placeholder="e.g. Jane Mukasa" required>
+
+                    <label for="regKinPhone">Next of Kin Contact</label>
+                    <div style="display: flex; gap: 10px;">
+                        <select id="regKinCountryCode" required style="width: 30%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 4px;">
+                            <option value="">Select Country</option>
+                            <optgroup label="East Africa">
+                                <option value="+256" selected>🇺🇬 Uganda (+256)</option>
+                                <option value="+250">🇷🇼 Rwanda (+250)</option>
+                                <option value="+255">🇹🇿 Tanzania (+255)</option>
+                                <option value="+254">🇰🇪 Kenya (+254)</option>
+                                <option value="+211">🇸🇸 South Sudan (+211)</option>
+                                <option value="+257">🇧🇮 Burundi (+257)</option>
+                            </optgroup>
+                            <optgroup label="West Africa">
+                                <option value="+234">🇳🇬 Nigeria (+234)</option>
+                                <option value="+233">🇬🇭 Ghana (+233)</option>
+                                <option value="+225">🇨🇮 Côte d'Ivoire (+225)</option>
+                                <option value="+229">🇧🇯 Benin (+229)</option>
+                            </optgroup>
+                            <optgroup label="Southern Africa">
+                                <option value="+27">🇿🇦 South Africa (+27)</option>
+                                <option value="+263">🇿🇼 Zimbabwe (+263)</option>
+                                <option value="+260">🇿🇲 Zambia (+260)</option>
+                                <option value="+265">🇲🇼 Malawi (+265)</option>
+                            </optgroup>
+                            <optgroup label="International">
+                                <option value="+1">🇺🇸 United States (+1)</option>
+                                <option value="+44">🇬🇧 United Kingdom (+44)</option>
+                                <option value="+33">🇫🇷 France (+33)</option>
+                                <option value="+49">🇩🇪 Germany (+49)</option>
+                                <option value="+91">🇮🇳 India (+91)</option>
+                                <option value="+86">🇨🇳 China (+86)</option>
+                            </optgroup>
+                        </select>
+                        <input type="tel" id="regKinPhone" placeholder="e.g. 712345678" style="flex: 1;" required>
+                    </div>
                     
                     <h3 class="form-section-heading">ACADEMIC INFO</h3>
                     <label for="regGender">Gender</label>
@@ -250,9 +341,173 @@
                     <label for="regConfirmPassword">Confirm Password</label>
                     <input type="password" id="regConfirmPassword" minlength="8" placeholder="e.g. SecurePass123!" required>
 
-                    <button type="submit" class="primary-btn black-btn">Create Account</button>
+                    <button type="submit" class="primary-btn black-btn">Sign Up</button>
                     <p class="form-footer-text">Already have an account? <a href="#" onclick="showSection('login')">Sign in</a></p>
                 </form>
+            </div>
+        </section>
+        <!-- Admin Panel Section -->
+        <section id="admin-panel" class="page-section" style="padding: 0;">
+            <div class="admin-layout">
+                <!-- Sidebar -->
+                <aside class="admin-sidebar">
+                    <div class="admin-header">
+                        <h2>ADMIN PANEL</h2>
+                    </div>
+                    <ul class="admin-nav">
+                        <li><a href="#" class="admin-nav-item active" onclick="showAdminTab('dashboard')" id="tab-dashboard">Dashboard</a></li>
+                        <li><a href="#" class="admin-nav-item" onclick="showAdminTab('manage-hostels')" id="tab-manage-hostels">Manage Hostels</a></li>
+                        <li><a href="#" class="admin-nav-item" onclick="showAdminTab('caretakers')" id="tab-caretakers">Caretakers</a></li>
+                        <li><a href="#" class="admin-nav-item" onclick="showAdminTab('reservations')" id="tab-reservations">Reservations</a></li>
+                        <li><a href="#" class="admin-nav-item" onclick="showAdminTab('students')" id="tab-students">Students</a></li>
+                    </ul>
+                </aside>
+                
+                <!-- Main Content -->
+                <div class="admin-main">
+                    <!-- Dashboard Tab -->
+                    <div id="admin-dashboard" class="admin-tab-content active">
+                        <div class="admin-top-bar">
+                            <h2>Dashboard Overview</h2>
+                            <p style="color: #64748b; font-size: 0.9rem; margin: 0;">Welcome, Admin</p>
+                        </div>
+                        <div class="admin-dashboard-cards">
+                            <div class="admin-card">
+                                <span class="card-title">Total Hostels</span>
+                                <strong>11</strong>
+                                <span class="card-desc">Active</span>
+                            </div>
+                            <div class="admin-card">
+                                <span class="card-title">Students</span>
+                                <strong>0</strong>
+                                <span class="card-desc">Registered</span>
+                            </div>
+                            <div class="admin-card">
+                                <span class="card-title">Reservations</span>
+                                <strong>0</strong>
+                                <span class="card-desc">This semester</span>
+                            </div>
+                            <div class="admin-card">
+                                <span class="card-title">Available</span>
+                                <strong>10</strong>
+                                <span class="card-desc">Open rooms</span>
+                            </div>
+                        </div>
+                        <div class="admin-recent-activity">
+                            <h3>Recent Activity</h3>
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Activity</th>
+                                        <th>Student</th>
+                                        <th>Hostel</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td colspan="4" class="text-center" style="color:#64748b; text-align: center;">No activity yet</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Manage Hostels Tab -->
+                    <div id="admin-manage-hostels" class="admin-tab-content">
+                        <div class="admin-top-bar">
+                            <h2>Manage Hostels & Rooms</h2>
+                            <div>
+                                <button class="primary-btn black-btn" style="margin:0; padding: 0.5rem 1rem; width: auto; font-size: 0.85rem; margin-right: 10px;" onclick="openRoomModal()">+ Add Room</button>
+                                <button class="primary-btn black-btn" style="margin:0; padding: 0.5rem 1rem; width: auto; font-size: 0.85rem;" onclick="openHostelModal()">+ Add Hostel</button>
+                            </div>
+                        </div>
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Category</th>
+                                    <th>Capacity</th>
+                                    <th>Price/Sem</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-hostels-list">
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Reservations Tab -->
+                    <div id="admin-reservations" class="admin-tab-content">
+                        <div class="admin-top-bar" style="margin-bottom: 5px;">
+                            <h2>All Reservations</h2>
+                        </div>
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Hostel</th>
+                                    <th>Room</th>
+                                    <th>Semester</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="6" class="text-center" style="color:#64748b; text-align: center;">No reservations yet</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Caretakers Tab -->
+                    <div id="admin-caretakers" class="admin-tab-content">
+                        <div class="admin-top-bar">
+                            <h2>Manage Caretakers</h2>
+                            <div>
+                                <button class="primary-btn black-btn" style="margin:0; padding: 0.5rem 1rem; width: auto; font-size: 0.85rem;" onclick="openCaretakerModal()">+ Add Caretaker</button>
+                            </div>
+                        </div>
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Phone</th>
+                                    <th>Email</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-caretakers-list">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Students Tab -->
+                    <div id="admin-students" class="admin-tab-content">
+                        <div class="admin-top-bar" style="margin-bottom: 5px;">
+                            <h2>Registered Students</h2>
+                        </div>
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Student ID</th>
+                                    <th>Email</th>
+                                    <th>Gender</th>
+                                    <th>Course</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="5" class="text-center" style="color:#64748b; text-align: center;">No students registered yet</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </section>
     </main>
@@ -325,14 +580,170 @@
         </div>
     </div>
 
+    <!-- Add/Edit Hostel Modal -->
+    <div id="hostelModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeHostelModal()">&times;</span>
+            <h2 id="hostelModalTitle">Add Hostel</h2>
+            <form id="hostelForm" class="vertical-form">
+                <input type="hidden" id="editHostelId">
+                <label for="hName">Hostel Name</label>
+                <input type="text" id="hName" required>
+                
+                <label for="hCategory">Category</label>
+                <select id="hCategory" required>
+                    <option value="university">University</option>
+                    <option value="private">Private</option>
+                </select>
+
+                <label for="hGender">Gender Type</label>
+                <select id="hGender" required>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Mixed">Mixed</option>
+                </select>
+
+                <label for="hPrice">Price per Sem</label>
+                <input type="text" id="hPrice" placeholder="e.g., UGX 650,000 /sem" required>
+
+                <label for="hOccupancy">Occupancy</label>
+                <input type="text" id="hOccupancy" placeholder="e.g., 45/60 Occupied" required>
+                
+                <label for="hRooms">Rooms Status</label>
+                <select id="hRooms" required>
+                    <option value="Available">Available</option>
+                    <option value="Full">Full</option>
+                </select>
+
+                <label for="hCaretaker">Caretaker Phone</label>
+                <input type="text" id="hCaretaker" required>
+
+                <button type="submit" class="primary-btn">Save Hostel</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Room Modal -->
+    <div id="roomModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeRoomModal()">&times;</span>
+            <h2>Add Room</h2>
+            <form id="roomForm" class="vertical-form">
+                <label for="rHostel">Select Hostel</label>
+                <select id="rHostel" required>
+                    <!-- Hostels populated dynamically -->
+                </select>
+
+                <label for="rRoomNumber">Room Number</label>
+                <input type="text" id="rRoomNumber" placeholder="e.g. B10" required>
+
+                <label for="rType">Room Type</label>
+                <select id="rType" required>
+                    <option value="Single Room">Single Room</option>
+                    <option value="Double Room">Double Room</option>
+                    <option value="Quad Room">Quad Room</option>
+                </select>
+
+                <label for="rCapacity">Capacity</label>
+                <input type="text" id="rCapacity" placeholder="e.g. 1 Person" required>
+
+                <label for="rFacilities">Facilities</label>
+                <input type="text" id="rFacilities" placeholder="e.g. Wi-Fi, En-suite Bath, Desk" required>
+
+                <label for="rPrice">Price (optional, if different from hostel)</label>
+                <input type="text" id="rPrice" placeholder="e.g. UGX 650,000 /sem">
+
+                <button type="submit" class="primary-btn">Save Room</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add/Edit Caretaker Modal -->
+    <div id="caretakerModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeCaretakerModal()">&times;</span>
+            <h2 id="caretakerModalTitle">Add Caretaker</h2>
+            <form id="caretakerForm" class="vertical-form">
+                <input type="hidden" id="editCaretakerId">
+                
+                <label for="cName">Caretaker Name</label>
+                <input type="text" id="cName" placeholder="e.g. John Doe" required>
+                
+                <label for="cPhone">Phone Number</label>
+                <input type="tel" id="cPhone" placeholder="e.g. 0712345678" required>
+                
+                <label for="cEmail">Email Address</label>
+                <input type="email" id="cEmail" placeholder="e.g. john.doe@bugemauniv.ac.ug" required>
+
+                <button type="submit" class="primary-btn">Save Caretaker</button>
+            </form>
+        </div>
+    </div>
+
     <!-- View Rooms Modal -->
     <div id="viewRoomsModal" class="modal">
         <div class="modal-content" style="max-width: 700px;">
             <span class="close-modal" onclick="closeRoomsModal()">&times;</span>
             <h2 id="roomsModalHostelName">Available Rooms</h2>
+            <button id="rateHostelBtn" style="padding: 0.4rem 0.8rem; border: 1px solid #1e3a8a; color: #1e3a8a; border-radius: 4px; background: transparent; cursor: pointer; display: inline-block; margin-bottom: 1rem;" onclick="openRateHostelModal()">&#9733; Rate This Hostel</button>
             <div id="roomsContainer" class="rooms-container">
                 <!-- Rooms dynamically injected here -->
             </div>
+        </div>
+    </div>
+
+    <!-- Rate Hostel Modal -->
+    <div id="rateHostelModal" class="modal" style="z-index: 1010;">
+        <div class="modal-content" style="max-width: 500px;">
+            <span class="close-modal" onclick="closeRateHostelModal()">&times;</span>
+            <h2 style="color: #1e3a8a; margin-bottom: 5px;">Rate This Hostel</h2>
+            <p style="color: #64748b; margin-bottom: 15px; font-size: 0.95rem;">Share your experience at this hostel</p>
+            <form id="rateHostelForm" class="vertical-form" style="display: flex; flex-direction: column;">
+                <label for="rhName" style="font-weight: 600; font-size: 0.9rem; margin-bottom: 5px; color: #0f172a;">Your Name</label>
+                <input type="text" id="rhName" placeholder="e.g. John Mukasa" style="padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 15px;" required>
+
+                <label style="font-weight: 600; font-size: 0.9rem; margin-bottom: 5px; color: #0f172a;">Rating</label>
+                <div class="star-rating" style="display: flex; gap: 8px; margin-bottom: 15px; cursor: pointer;" id="starRatingContainer">
+                    <span class="star" data-value="1" style="font-size: 2rem; color: #cbd5e1;">&#9733;</span>
+                    <span class="star" data-value="2" style="font-size: 2rem; color: #cbd5e1;">&#9733;</span>
+                    <span class="star" data-value="3" style="font-size: 2rem; color: #cbd5e1;">&#9733;</span>
+                    <span class="star" data-value="4" style="font-size: 2rem; color: #cbd5e1;">&#9733;</span>
+                    <span class="star" data-value="5" style="font-size: 2rem; color: #cbd5e1;">&#9733;</span>
+                </div>
+                <input type="hidden" id="rhRatingValue" required>
+
+                <label for="rhComments" style="font-weight: 600; font-size: 0.9rem; margin-bottom: 5px; color: #0f172a;">Comments</label>
+                <textarea id="rhComments" rows="4" placeholder="e.g. Clean rooms, friendly staff..." style="padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 15px; resize: vertical;" required></textarea>
+
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" class="hero-btn outline" style="flex: 1; padding: 0.75rem; margin: 0; border: 1px solid #000; background: transparent; color: #000; border-radius: 4px; cursor: pointer;" onclick="closeRateHostelModal()">Cancel</button>
+                    <button type="submit" class="primary-btn" style="flex: 2; padding: 0.75rem; margin: 0; background: #000; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Submit Rating</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Caretaker Modal for Admin -->
+    <div id="caretakerModal" class="modal" style="z-index: 1010;">
+        <div class="modal-content" style="max-width: 500px;">
+            <span class="close-modal" onclick="closeCaretakerModal()">&times;</span>
+            <h2 id="cmTitle" style="color: #1e3a8a; margin-bottom: 15px;">Add New Caretaker</h2>
+            <form id="caretakerForm" class="vertical-form" style="display: flex; flex-direction: column;">
+                <input type="hidden" id="cmId">
+                <label for="cmName" style="font-weight: 600; font-size: 0.9rem; margin-bottom: 5px; color: #0f172a;">Full Name</label>
+                <input type="text" id="cmName" placeholder="e.g. ATUKWATSE BLESSING" style="padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 15px;" required>
+
+                <label for="cmPhone" style="font-weight: 600; font-size: 0.9rem; margin-bottom: 5px; color: #0f172a;">Telephone Number</label>
+                <input type="tel" id="cmPhone" placeholder="e.g. 0769559707" style="padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 15px;" required>
+
+                <label for="cmEmail" style="font-weight: 600; font-size: 0.9rem; margin-bottom: 5px; color: #0f172a;">Email Address</label>
+                <input type="email" id="cmEmail" placeholder="e.g. blessing@example.com" style="padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 15px;" required>
+
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button type="button" class="hero-btn outline" style="flex: 1; padding: 0.75rem; border: 1px solid #000; background: transparent; color: #000; border-radius: 4px; cursor: pointer;" onclick="closeCaretakerModal()">Cancel</button>
+                    <button type="submit" class="primary-btn black-btn" style="flex: 2; padding: 0.75rem; margin: 0; background: #000; color: #fff; border: none; border-radius: 4px; cursor: pointer;">Save Caretaker</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -341,6 +752,8 @@
         <p>&copy; 2026 Bugema University Hostel Reservation System.</p>
     </footer>
 
+    <script src="api-config.js"></script>
     <script src="app.js"></script>
+    <script src="test-api-integration.js"></script>
 </body>
 </html>
