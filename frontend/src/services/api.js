@@ -39,6 +39,7 @@ export const API_CONFIG = {
         UPDATE_PROFILE: '/users/users/profile/',
         LOGIN_HISTORY: '/users/users/login_history/',
         STATS: '/users/users/stats/',
+        CARETAKERS_CREATE: '/users/users/caretakers/',
     },
     
     // Reservation endpoints
@@ -67,6 +68,13 @@ export const API_CONFIG = {
         CREATE: '/reservations/waiting-list/',
         MY_ENTRIES: '/reservations/waiting-list/my_entries/',
         DEACTIVATE: (id) => `/reservations/waiting-list/${id}/deactivate/`,
+    },
+    
+    // Review endpoints
+    REVIEWS: {
+        LIST: '/hostels/reviews/',
+        CREATE: '/hostels/reviews/',
+        DETAIL: (id) => `/hostels/reviews/${id}/`,
     }
 };
 
@@ -90,7 +98,10 @@ class ApiClient {
         const headers = {
             'Content-Type': 'application/json',
         };
-        
+        const stored = localStorage.getItem('authToken');
+        if (stored) {
+            this.token = stored;
+        }
         if (this.token) {
             headers['Authorization'] = `Token ${this.token}`;
         }
@@ -110,20 +121,45 @@ class ApiClient {
             
             if (response.status === 401) {
                 this.removeToken();
-                // We'll let the application framework handle redirection, or dispatch an event
-                const event = new CustomEvent('auth:unauthorized');
-                window.dispatchEvent(event);
-                throw new Error('Session expired. Please login again.');
+                // Only dispatch unauthorized event if it's NOT a login request
+                if (!endpoint.includes('/auth/login')) {
+                    const event = new CustomEvent('auth:unauthorized');
+                    window.dispatchEvent(event);
+                }
+                
+                let errorData = {};
+                try {
+                    errorData = await response.json();
+                } catch (e) {}
+                
+                throw new Error(errorData.detail || errorData.message || (endpoint.includes('/auth/login') ? 'Invalid credentials' : 'Session expired. Please login again.'));
             }
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || errorData.message || `HTTP ${response.status}`);
+                const text = await response.text().catch(() => '');
+                let errorData = {};
+                try {
+                    errorData = JSON.parse(text);
+                } catch (e) {}
+                
+                let errorMessage = errorData.detail || errorData.message;
+                
+                if (!errorMessage && Object.keys(errorData).length > 0) {
+                    const errorMessages = [];
+                    for (const [key, value] of Object.entries(errorData)) {
+                        const valStr = Array.isArray(value) ? value.join(', ') : value;
+                        errorMessages.push(`${key}: ${valStr}`);
+                    }
+                    errorMessage = errorMessages.join(' | ');
+                }
+                
+                throw new Error(errorMessage || text || `HTTP ${response.status}`);
             }
 
-            return await response.json();
+            const text = await response.text();
+            return text ? JSON.parse(text) : null;
         } catch (error) {
-            console.error('API Error:', error);
+            console.error(`API Error on ${options.method || 'GET'} ${url}:`, error.message || error);
             throw error;
         }
     }
@@ -161,27 +197,51 @@ class ApiClient {
         });
     }
 
-    async upload(endpoint, formData) {
+    async upload(endpoint, formData, method = 'POST') {
         const url = `${this.baseURL}${endpoint}`;
         const headers = {};
         
+        const stored = localStorage.getItem('authToken');
+        if (stored) {
+            this.token = stored;
+        }
         if (this.token) {
             headers['Authorization'] = `Token ${this.token}`;
         }
 
         try {
             const response = await fetch(url, {
-                method: 'POST',
+                method: method,
                 headers,
                 body: formData,
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || errorData.message || `HTTP ${response.status}`);
+                let errorText = await response.text().catch(() => '');
+                let errorData = {};
+                try {
+                    errorData = JSON.parse(errorText);
+                } catch (e) {
+                    // Not JSON
+                }
+                
+                let errorMessage = errorData.detail || errorData.message || errorData.error;
+                
+                // If it's a validation error object from Django
+                if (!errorMessage && Object.keys(errorData).length > 0) {
+                    const errorMessages = [];
+                    for (const [key, value] of Object.entries(errorData)) {
+                        const valStr = Array.isArray(value) ? value.join(', ') : value;
+                        errorMessages.push(`${key}: ${valStr}`);
+                    }
+                    errorMessage = errorMessages.join(' | ');
+                }
+                
+                throw new Error(errorMessage || `HTTP ${response.status}`);
             }
 
-            return await response.json();
+            const text = await response.text();
+            return text ? JSON.parse(text) : null;
         } catch (error) {
             console.error('Upload Error:', error);
             throw error;

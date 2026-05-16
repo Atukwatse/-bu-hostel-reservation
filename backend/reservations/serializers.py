@@ -58,8 +58,12 @@ class ReservationCreateSerializer(serializers.ModelSerializer):
         fields = [
             'hostel', 'room', 'payment_method', 'total_amount', 'semester',
             'academic_year', 'check_in_date', 'check_out_date',
-            'special_requests', 'notes', 'receipt_image'
+            'special_requests', 'notes', 'receipt_image', 'transaction_id'
         ]
+        extra_kwargs = {
+            'transaction_id': {'write_only': True, 'required': False}
+        }
+
 
     def validate(self, data):
         hostel = data.get('hostel')
@@ -89,8 +93,23 @@ class ReservationCreateSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
+        transaction_id = validated_data.pop('transaction_id', None)
         validated_data['user'] = self.context['request'].user
-        return super().create(validated_data)
+        reservation = super().create(validated_data)
+        
+        if transaction_id:
+            # Create a pending payment record
+            Payment.objects.create(
+                reservation=reservation,
+                amount=reservation.total_amount,
+                payment_type='full_payment',
+                payment_method=reservation.payment_method,
+                transaction_id=transaction_id,
+                status='pending'
+            )
+            
+        return reservation
+
 
 
 class InquirySerializer(serializers.ModelSerializer):

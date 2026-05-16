@@ -264,11 +264,36 @@
 .h-custodian {
     border-top: 1px dashed #cbd5e1;
     border-bottom: 1px dashed #cbd5e1;
-    padding: 0.5rem 0;
+    padding: 0.75rem;
     margin-bottom: 1rem;
     font-size: 0.85rem;
     color: #333;
     background: #f8fafc;
+    border-radius: 4px;
+}
+
+.h-custodian strong {
+    color: #1e293b;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.h-custodian a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #3b82f6 !important;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.h-custodian a:hover {
+    background: #dbeafe;
+    color: #2563eb !important;
+    transform: translateY(-1px);
 }
 
 .h-actions {
@@ -424,6 +449,19 @@
     .filter-row {
         flex-direction: column;
         gap: 1rem;
+    }
+    
+    .h-custodian {
+        padding: 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    .h-custodian a {
+        padding: 0.5rem;
+        font-size: 0.85rem;
+        justify-content: center;
+        width: 100%;
+        margin-top: 0.25rem;
     }
     
     .category-grid {

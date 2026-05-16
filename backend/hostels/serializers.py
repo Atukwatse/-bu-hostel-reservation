@@ -24,12 +24,13 @@ class RoomSerializer(serializers.ModelSerializer):
 class ReviewSerializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source='user.name', read_only=True)
     user_email = serializers.CharField(source='user.email', read_only=True)
+    hostel_name = serializers.CharField(source='hostel.name', read_only=True)
 
     class Meta:
         model = Review
         fields = [
-            'id', 'user', 'user_name', 'user_email', 'rating', 'comment',
-            'created_at', 'updated_at'
+            'id', 'user', 'user_name', 'user_email', 'hostel', 'hostel_name', 
+            'rating', 'comment', 'created_at', 'updated_at'
         ]
         read_only_fields = ['user']
 
@@ -37,7 +38,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 class HostelSerializer(serializers.ModelSerializer):
     images = HostelImageSerializer(many=True, read_only=True)
     rooms = RoomSerializer(many=True, read_only=True)
-    reviews = ReviewSerializer(many=True, read_only=True)
+    hostel_reviews = ReviewSerializer(many=True, read_only=True)
     average_rating = serializers.ReadOnlyField()
     total_rooms = serializers.SerializerMethodField()
     available_rooms = serializers.SerializerMethodField()
@@ -48,7 +49,7 @@ class HostelSerializer(serializers.ModelSerializer):
             'id', 'name', 'type', 'price', 'gender', 'occupancy', 'rating',
             'reviews', 'average_rating', 'caretaker_phone', 'rooms_status',
             'image', 'description', 'facilities', 'location', 'images',
-            'rooms', 'total_rooms', 'available_rooms', 'created_at', 'updated_at'
+            'rooms', 'total_rooms', 'available_rooms', 'hostel_reviews', 'created_at', 'updated_at'
         ]
 
     def get_total_rooms(self, obj):

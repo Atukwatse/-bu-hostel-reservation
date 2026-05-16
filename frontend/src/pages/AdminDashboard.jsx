@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api, API_CONFIG } from '../services/api';
+import { displayUserName } from '../utils/userDisplayName';
 import '../AdminDashboard.css';
 
 const AdminDashboard = () => {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [hostels, setHostels] = useState([]);
+    const [rooms, setRooms] = useState([]);
     const [users, setUsers] = useState([]);
     const [reservations, setReservations] = useState([]);
     const [caretakers, setCaretakers] = useState([]);
@@ -13,15 +15,14 @@ const AdminDashboard = () => {
     const [showRoomModal, setShowRoomModal] = useState(false);
     const [showCaretakerModal, setShowCaretakerModal] = useState(false);
     const [editingHostel, setEditingHostel] = useState(null);
+    const [editingRoom, setEditingRoom] = useState(null);
     const [editingCaretaker, setEditingCaretaker] = useState(null);
+    const [selectedManageHostel, setSelectedManageHostel] = useState('');
     const [loading, setLoading] = useState(false);
+    const adminDataBootstrapped = useRef(false);
 
-    useEffect(() => {
-        fetchAdminData();
-    }, []);
-
-    const fetchAdminData = async () => {
-        setLoading(true);
+    const fetchAdminData = async ({ withSpinner = true } = {}) => {
+        if (withSpinner) setLoading(true);
         try {
             // Fetch real data from APIs
             const [hostelsRes, usersRes, reservationsRes] = await Promise.all([
@@ -33,34 +34,26 @@ const AdminDashboard = () => {
             const allHostels = hostelsRes.results || hostelsRes;
             setHostels(allHostels.map(hostel => ({
                 ...hostel,
-                occupancy: `${hostel.available_rooms !== undefined ? hostel.available_rooms : 0}/${hostel.total_rooms || 0}`,
+                occupancy: (hostel.total_rooms > 0) ? `${hostel.available_rooms}/${hostel.total_rooms}` : hostel.occupancy || 'N/A',
                 status: hostel.rooms_status || 'Available'
             })));
 
             const allUsers = usersRes.results || usersRes;
-            console.log('All users from API:', allUsers); // Debug log
-            const students = allUsers.filter(u => u.role !== 'caretaker' && u.role !== 'admin');
+            const withDisplayName = (u) => ({ ...u, name: displayUserName(u) });
+            const students = allUsers
+                .filter(u => u.role !== 'caretaker' && u.role !== 'admin')
+                .map(withDisplayName);
             setUsers(students);
-            
-            let filteredCaretakers = allUsers.filter(u => u.role === 'caretaker');
-            console.log('Filtered caretakers:', filteredCaretakers); // Debug log
-            
-            // If no caretakers found, add fallback data for testing
-            if (filteredCaretakers.length === 0) {
-                console.log('No caretakers found, adding fallback data');
-                filteredCaretakers = [
-                    { id: 1, name: 'ATUKWATSE BLESSING', email: 'atukwatse@bugema.ac.ug', phone: '0769559707', gender: 'Male', role: 'caretaker' },
-                    { id: 2, name: 'AHEBWA SAVIO', email: 'ahebwa@bugema.ac.ug', phone: '0744895697', gender: 'Male', role: 'caretaker' },
-                    { id: 3, name: 'NABWAMI ROSE', email: 'nabwami@bugema.ac.ug', phone: '0772345678', gender: 'Female', role: 'caretaker' }
-                ];
-            }
-            
+
+            const filteredCaretakers = allUsers
+                .filter(u => u.role === 'caretaker')
+                .map(withDisplayName);
             setCaretakers(filteredCaretakers);
 
             const allReservations = reservationsRes.results || reservationsRes;
             setReservations(allReservations.map(res => ({
                 ...res,
-                student: res.user_name || res.user?.name || 'Unknown',
+                student: res.user_name || displayUserName(res.user) || 'Unknown',
                 hostel: res.hostel_name || res.hostel?.name || 'Unknown',
                 date: res.created_at?.split('T')[0] || new Date().toISOString().split('T')[0]
             })));
@@ -81,9 +74,53 @@ const AdminDashboard = () => {
             ]);
             setStats({ totalHostels: 2, students: 0, reservations: 0, available: 2 });
         } finally {
-            setLoading(false);
+            if (withSpinner) setLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (!adminDataBootstrapped.current) {
+            adminDataBootstrapped.current = true;
+            fetchAdminData({ withSpinner: true });
+            return;
+        }
+        fetchAdminData({ withSpinner: false });
+    }, [activeTab]);
+
+    // Fetch rooms and images when a specific hostel is selected for management
+    useEffect(() => {
+        const fetchHostelDetails = async () => {
+            if (!selectedManageHostel) {
+                setRooms([]);
+                return;
+            }
+
+            try {
+                setLoading(true);
+                // Fetch specific rooms for this hostel AND full hostel details (for gallery images)
+                const [roomsRes, hostelDetail] = await Promise.all([
+                    api.get(API_CONFIG.ROOMS.LIST, { hostel: selectedManageHostel }),
+                    api.get(API_CONFIG.HOSTELS.DETAIL(selectedManageHostel))
+                ]);
+
+                const fetchedRooms = roomsRes.results || roomsRes;
+                setRooms(fetchedRooms);
+
+                // Update the hostel in our list with full details (images, etc)
+                setHostels(prev => prev.map(h => 
+                    h.id === parseInt(selectedManageHostel, 10) ? { ...h, ...hostelDetail } : h
+                ));
+            } catch (error) {
+                console.error('Error fetching hostel details:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (activeTab === 'manage-rooms') {
+            fetchHostelDetails();
+        }
+    }, [selectedManageHostel, activeTab]);
 
     const handleAddHostel = () => {
         setEditingHostel(null);
@@ -110,19 +147,32 @@ const AdminDashboard = () => {
 
     const handleSaveHostel = async (hostelData) => {
         try {
-            const payload = {
-                ...hostelData,
-                rating: hostelData.rating || 0.0,
-                reviews: hostelData.reviews || 0
-            };
+            const formData = new FormData();
+            
+            // Append all text fields
+            Object.keys(hostelData).forEach(key => {
+                if (key !== 'image' && hostelData[key] !== null && hostelData[key] !== undefined) {
+                    formData.append(key, hostelData[key]);
+                }
+            });
+            
+            // Default fields
+            if (!formData.has('rating')) formData.append('rating', 0.0);
+            if (!formData.has('reviews')) formData.append('reviews', 0);
+            
+            // Append image if present and is a File
+            if (hostelData.image && typeof hostelData.image !== 'string') {
+                formData.append('image', hostelData.image);
+            }
+
             if (editingHostel) {
                 // Update existing hostel
-                const updatedHostel = await api.patch(API_CONFIG.HOSTELS.DETAIL(editingHostel.id), payload);
+                const updatedHostel = await api.upload(API_CONFIG.HOSTELS.DETAIL(editingHostel.id), formData, 'PATCH');
                 setHostels(hostels.map(h => h.id === editingHostel.id ? { ...h, ...updatedHostel } : h));
                 alert('Hostel updated successfully');
             } else {
                 // Add new hostel
-                const newHostel = await api.post(API_CONFIG.HOSTELS.LIST, payload);
+                const newHostel = await api.upload(API_CONFIG.HOSTELS.LIST, formData, 'POST');
                 setHostels([...hostels, newHostel]);
                 alert('Hostel added successfully');
             }
@@ -135,31 +185,71 @@ const AdminDashboard = () => {
     };
 
     const handleAddRoom = () => {
+        setEditingRoom(null);
         setShowRoomModal(true);
+    };
+
+    const handleEditRoom = (room) => {
+        setEditingRoom(room);
+        setShowRoomModal(true);
+    };
+
+    const handleDeleteRoom = async (roomId) => {
+        if (window.confirm('Are you sure you want to delete this room?')) {
+            try {
+                await api.delete(API_CONFIG.ROOMS.DETAIL(roomId));
+                setRooms(rooms.filter(r => r.id !== roomId));
+                alert('Room deleted successfully');
+            } catch (error) {
+                console.error('Error deleting room:', error);
+                alert(`Failed to delete room: ${error.message}`);
+            }
+        }
     };
 
     const handleSaveRoom = async (roomData) => {
         try {
-            const newRoom = await api.post(API_CONFIG.ROOMS.CREATE, roomData);
-            alert('Room added successfully');
+            const payload = {
+                ...roomData,
+                hostel: parseInt(roomData.hostel, 10),
+                capacity: Number(roomData.capacity),
+                price_per_semester: Number(roomData.price_per_semester),
+                is_available: Boolean(roomData.is_available),
+            };
+
+            if (editingRoom) {
+                const updatedRoom = await api.patch(API_CONFIG.ROOMS.DETAIL(editingRoom.id), payload);
+                setRooms(rooms.map(r => r.id === editingRoom.id ? updatedRoom : r));
+                alert('Room updated successfully');
+            } else {
+                const newRoom = await api.post(API_CONFIG.ROOMS.CREATE, payload);
+                setRooms([...rooms, newRoom]);
+                alert('Room added successfully');
+            }
+            
             setShowRoomModal(false);
+            setEditingRoom(null);
             // Refresh hostels to show updated room counts
-            fetchAdminData();
+            fetchAdminData({ withSpinner: false });
         } catch (error) {
             console.error('Error saving room:', error);
-            alert(`Failed to save room: ${error.message}`);
+            let errorMessage = error.message;
+            if (errorMessage.toLowerCase().includes('unique set') || errorMessage.toLowerCase().includes('already exists')) {
+                errorMessage = 'A room with this number already exists in the selected hostel.';
+            }
+            alert(`Failed to save room: ${errorMessage}`);
         }
     };
 
     const handleConfirmReservation = async (reservationId) => {
         if (window.confirm('Are you sure you want to confirm this reservation?')) {
             try {
-                await api.post(API_CONFIG.RESERVATIONS.CONFIRM(reservationId));
+                await api.post(API_CONFIG.RESERVATIONS.CONFIRM(reservationId), {});
                 alert('Reservation confirmed successfully');
-                fetchAdminData();
+                fetchAdminData({ withSpinner: false });
             } catch (error) {
                 console.error('Error confirming reservation:', error);
-                alert('Failed to confirm reservation');
+                alert(`Failed to confirm reservation: ${error.message}`);
             }
         }
     };
@@ -167,12 +257,12 @@ const AdminDashboard = () => {
     const handleCancelReservation = async (reservationId) => {
         if (window.confirm('Are you sure you want to cancel this reservation?')) {
             try {
-                await api.post(API_CONFIG.RESERVATIONS.CANCEL(reservationId));
+                await api.post(API_CONFIG.RESERVATIONS.CANCEL(reservationId), {});
                 alert('Reservation cancelled successfully');
-                fetchAdminData();
+                fetchAdminData({ withSpinner: false });
             } catch (error) {
                 console.error('Error cancelling reservation:', error);
-                alert('Failed to cancel reservation');
+                alert(`Failed to cancel reservation: ${error.message}`);
             }
         }
     };
@@ -203,32 +293,79 @@ const AdminDashboard = () => {
 
     const handleSaveCaretaker = async (caretakerData) => {
         try {
+            const rawName = caretakerData.name.trim();
+            const parts = rawName.split(/\s+/);
+            const first_name = parts[0] || '';
+            const last_name = parts.length > 1 ? parts.slice(1).join(' ') : '';
+            
+            let caretakerPhone = caretakerData.phone.trim();
+            
             if (editingCaretaker) {
-                // Update existing caretaker
-                const updatedCaretaker = await api.patch(`/users/users/${editingCaretaker.id}/`, caretakerData);
-                setCaretakers(caretakers.map(c => c.id === editingCaretaker.id ? { ...c, ...updatedCaretaker } : c));
+                const patchPayload = {
+                    first_name,
+                    last_name,
+                    email: caretakerData.email.trim(),
+                    phone: caretakerPhone,
+                    gender: caretakerData.gender,
+                };
+                const updatedCaretaker = await api.patch(`/users/users/${editingCaretaker.id}/`, patchPayload);
+                const merged = { ...updatedCaretaker, name: displayUserName(updatedCaretaker) };
+                setCaretakers(caretakers.map(c => (c.id === editingCaretaker.id ? merged : c)));
                 alert('Caretaker updated successfully');
             } else {
-                // Add new caretaker
-                const newCaretaker = await api.post('/users/users/', { ...caretakerData, role: 'caretaker' });
-                setCaretakers([...caretakers, newCaretaker]);
+                if (caretakerData.password !== caretakerData.password_confirm) {
+                    alert('Passwords do not match');
+                    return;
+                }
+                const newCaretaker = await api.post(API_CONFIG.USERS.CARETAKERS_CREATE, {
+                    name: rawName,
+                    email: caretakerData.email.trim(),
+                    phone: caretakerPhone,
+                    gender: caretakerData.gender,
+                    password: 'Caretaker@2026!',
+                    password_confirm: 'Caretaker@2026!',
+                });
+                setCaretakers([...caretakers, { ...newCaretaker, name: displayUserName(newCaretaker) }]);
                 alert('Caretaker added successfully');
             }
+            
+            // Assign to hostel by updating hostel's caretaker_phone
+            if (caretakerData.assigned_hostel) {
+                await api.patch(API_CONFIG.HOSTELS.DETAIL(caretakerData.assigned_hostel), {
+                    caretaker_phone: caretakerPhone
+                });
+                fetchAdminData({ withSpinner: false }); // Refresh hostels to reflect new caretaker
+            }
+            
             setShowCaretakerModal(false);
             setEditingCaretaker(null);
         } catch (error) {
             console.error('Error saving caretaker:', error);
-            alert('Failed to save caretaker');
+            alert(`Failed to save caretaker: ${error.message}`);
         }
+    };
+    
+    const extractRoomFromNotes = (notes) => {
+        if (!notes) return null;
+        const match = notes.match(/Room Number:\s*([^,]+)/i);
+        return match ? match[1].trim() : null;
     };
 
     const renderTabContent = () => {
+        let adminWelcome = 'Admin';
+        try {
+            const u = JSON.parse(localStorage.getItem('currentUser') || 'null');
+            adminWelcome = displayUserName(u) || 'Admin';
+        } catch {
+            adminWelcome = 'Admin';
+        }
+
         if (activeTab === 'dashboard') {
             return (
                 <div className="admin-tab-content active">
                     <div className="admin-top-bar">
                         <h2>Dashboard Overview</h2>
-                        <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>Welcome, Admin</p>
+                        <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>Welcome, {adminWelcome}</p>
                     </div>
                     <div className="admin-dashboard-cards">
                         <div className="admin-card">
@@ -298,9 +435,9 @@ const AdminDashboard = () => {
                         <table className="admin-table">
                             <thead>
                                 <tr>
+                                    <th>Image</th>
                                     <th>Name</th>
                                     <th>Category</th>
-                                    <th>Capacity</th>
                                     <th>Price/Sem</th>
                                     <th>Status</th>
                                     <th>Actions</th>
@@ -309,9 +446,15 @@ const AdminDashboard = () => {
                             <tbody>
                                 {hostels.map(h => (
                                     <tr key={h.id}>
+                                        <td>
+                                            {h.image ? (
+                                                <img src={h.image} alt={h.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
+                                            ) : (
+                                                <div style={{ width: '40px', height: '40px', background: '#e2e8f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', color: '#94a3b8' }}>No Img</div>
+                                            )}
+                                        </td>
                                         <td>{h.name}</td>
                                         <td>{h.type}</td>
-                                        <td>{h.occupancy}</td>
                                         <td>{h.price}</td>
                                         <td>{h.status}</td>
                                         <td>
@@ -340,7 +483,6 @@ const AdminDashboard = () => {
                         <thead>
                             <tr>
                                 <th>Name</th>
-                                <th>Student ID</th>
                                 <th>Email</th>
                                 <th>Gender</th>
                                 <th>Course</th>
@@ -349,55 +491,13 @@ const AdminDashboard = () => {
                         <tbody>
                             {users.map(u => (
                                 <tr key={u.id}>
-                                    <td>{u.name}</td>
-                                    <td>{u.student_id}</td>
+                                    <td>{displayUserName(u)}</td>
                                     <td>{u.email}</td>
                                     <td>{u.gender}</td>
                                     <td>{u.program_of_study}</td>
                                 </tr>
                             ))}
-                            {users.length === 0 && <tr><td colSpan="5" className="text-center" style={{color:'#64748b', textAlign: 'center'}}>No students registered yet</td></tr>}
-                        </tbody>
-                    </table>
-                </div>
-            );
-        } else if (activeTab === 'caretakers') {
-            return (
-                <div className="admin-tab-content active">
-                    <div className="admin-top-bar">
-                        <h2>Caretakers Management</h2>
-                        <button className="primary-btn black-btn" style={{margin:0, padding: '0.5rem 1rem', width: 'auto', fontSize: '0.85rem'}}>+ Add Caretaker</button>
-                    </div>
-                    <table className="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Phone</th>
-                                <th>Email</th>
-                                <th>Assigned Hostels</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {caretakers.map(caretaker => (
-                                <tr key={caretaker.id}>
-                                    <td>{caretaker.name}</td>
-                                    <td>{caretaker.phone}</td>
-                                    <td>{caretaker.email}</td>
-                                    <td>
-                                        {hostels.filter(h => h.caretaker_phone === caretaker.phone).map(h => h.name).join(', ') || 'None'}
-                                    </td>
-                                    <td>
-                                        <button className="btn-edit" style={{marginRight: '5px'}}>Edit</button>
-                                        <button className="btn-delete">Delete</button>
-                                    </td>
-                                </tr>
-                            ))}
-                            {caretakers.length === 0 && (
-                                <tr>
-                                    <td colSpan="5" style={{textAlign: 'center', color: '#64748b'}}>No caretakers found</td>
-                                </tr>
-                            )}
+                            {users.length === 0 && <tr><td colSpan="4" className="text-center" style={{color:'#64748b', textAlign: 'center'}}>No students registered yet</td></tr>}
                         </tbody>
                     </table>
                 </div>
@@ -418,6 +518,7 @@ const AdminDashboard = () => {
                                 <th>Amount</th>
                                 <th>Status</th>
                                 <th>Payment</th>
+                                <th>Transaction ID</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -427,7 +528,7 @@ const AdminDashboard = () => {
                                     <td>{reservation.reservation_code}</td>
                                     <td>{reservation.student}</td>
                                     <td>{reservation.hostel}</td>
-                                    <td>{reservation.room_number || 'Not Assigned'}</td>
+                                    <td>{reservation.room_number || extractRoomFromNotes(reservation.notes) || 'Not Assigned'}</td>
                                     <td>UGX {reservation.total_amount?.toLocaleString()}</td>
                                     <td>
                                         <span className={`status-badge ${reservation.status}`}>
@@ -437,6 +538,13 @@ const AdminDashboard = () => {
                                     <td>
                                         <span className={`payment-status ${reservation.payment_status}`}>
                                             {reservation.payment_status}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span style={{fontSize: '0.85rem', color: '#1e293b', fontWeight: '500'}}>
+                                            {reservation.payments && reservation.payments.length > 0 
+                                                ? reservation.payments[0].transaction_id || 'N/A' 
+                                                : 'N/A'}
                                         </span>
                                     </td>
                                     <td>
@@ -463,7 +571,7 @@ const AdminDashboard = () => {
                             ))}
                             {reservations.length === 0 && (
                                 <tr>
-                                    <td colSpan="8" style={{textAlign: 'center', color: '#64748b'}}>No reservations found</td>
+                                    <td colSpan="9" style={{textAlign: 'center', color: '#64748b'}}>No reservations found</td>
                                 </tr>
                             )}
                         </tbody>
@@ -475,40 +583,179 @@ const AdminDashboard = () => {
                 <div className="admin-tab-content active">
                     <div className="admin-top-bar">
                         <h2>Caretakers Management</h2>
-                        <button className="primary-btn black-btn" style={{margin:0, padding: '0.5rem 1rem', width: 'auto', fontSize: '0.85rem'}} onClick={handleAddCaretaker}>+ Add Caretaker</button>
+                        <button type="button" className="primary-btn black-btn" style={{margin:0, padding: '0.5rem 1rem', width: 'auto', fontSize: '0.85rem'}} onClick={handleAddCaretaker}>+ Add Caretaker</button>
                     </div>
-                    <table className="admin-table">
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Phone</th>
-                                <th>Email</th>
-                                <th>Assigned Hostels</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {caretakers.map(caretaker => (
-                                <tr key={caretaker.id}>
-                                    <td>{caretaker.name}</td>
-                                    <td>{caretaker.phone}</td>
-                                    <td>{caretaker.email}</td>
-                                    <td>
-                                        {hostels.filter(h => h.caretaker_phone === caretaker.phone).map(h => h.name).join(', ') || 'None'}
-                                    </td>
-                                    <td>
-                                        <button className="btn-edit" style={{marginRight: '5px'}} onClick={() => handleEditCaretaker(caretaker)}>Edit</button>
-                                        <button className="btn-delete" onClick={() => handleDeleteCaretaker(caretaker.id)}>Delete</button>
-                                    </td>
-                                </tr>
-                            ))}
-                            {caretakers.length === 0 && (
+                    {loading ? (
+                        <div style={{ textAlign: 'center', padding: '2rem' }}>Loading...</div>
+                    ) : (
+                        <table className="admin-table">
+                            <thead>
                                 <tr>
-                                    <td colSpan="5" style={{textAlign: 'center', color: '#64748b'}}>No caretakers found</td>
+                                    <th>Name</th>
+                                    <th>Phone</th>
+                                    <th>Email</th>
+                                    <th>Assigned Hostels</th>
+                                    <th>Actions</th>
                                 </tr>
+                            </thead>
+                            <tbody>
+                                {caretakers.map(caretaker => (
+                                    <tr key={caretaker.id}>
+                                        <td>{displayUserName(caretaker)}</td>
+                                        <td>{caretaker.phone}</td>
+                                        <td>{caretaker.email}</td>
+                                        <td>
+                                            {hostels.filter(h => h.caretaker_phone === caretaker.phone).map(h => h.name).join(', ') || 'None'}
+                                        </td>
+                                        <td>
+                                            <button type="button" className="btn-edit" style={{marginRight: '5px'}} onClick={() => handleEditCaretaker(caretaker)}>Edit</button>
+                                            <button type="button" className="btn-delete" onClick={() => handleDeleteCaretaker(caretaker.id)}>Delete</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {caretakers.length === 0 && (
+                                    <tr>
+                                        <td colSpan="5" style={{textAlign: 'center', color: '#64748b'}}>No caretakers found</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            );
+        } else if (activeTab === 'manage-rooms') {
+            const currentHostel = hostels.find(h => h.id === parseInt(selectedManageHostel, 10));
+            const filteredRooms = selectedManageHostel 
+                ? rooms.filter(r => {
+                    const roomHostelId = typeof r.hostel === 'object' ? r.hostel.id : r.hostel;
+                    return parseInt(roomHostelId, 10) === parseInt(selectedManageHostel, 10);
+                })
+                : [];
+
+            return (
+                <div className="admin-tab-content active">
+                    <div className="admin-top-bar" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                            <h2>Manage Rooms</h2>
+                            <button 
+                                className="primary-btn black-btn" 
+                                onClick={handleAddRoom} 
+                                style={{margin:0, padding: '0.5rem 1rem', width: 'auto', fontSize: '0.85rem'}}
+                                disabled={!selectedManageHostel}
+                                title={!selectedManageHostel ? "Please select a hostel first" : ""}
+                            >
+                                + Add Room
+                            </button>
+                        </div>
+                        
+                        <div style={{ width: '100%', backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                            <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '600', color: '#475569' }}>Select Hostel to Manage Rooms:</label>
+                            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                <select 
+                                    value={selectedManageHostel} 
+                                    onChange={(e) => setSelectedManageHostel(e.target.value)}
+                                    style={{ width: '100%', maxWidth: '350px', padding: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '1rem' }}
+                                >
+                                    <option value="">-- Choose a Hostel --</option>
+                                    {hostels.map(h => (
+                                        <option key={h.id} value={h.id}>{h.name}</option>
+                                    ))}
+                                </select>
+                                
+                                {currentHostel && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.5rem 1rem', background: 'white', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                                        {currentHostel.image ? (
+                                            <img src={currentHostel.image} alt={currentHostel.name} style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} />
+                                        ) : (
+                                            <div style={{ width: '50px', height: '50px', background: '#f1f5f9', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem' }}>No Image</div>
+                                        )}
+                                        <div>
+                                            <h4 style={{ margin: 0, fontSize: '0.95rem' }}>{currentHostel.name}</h4>
+                                            <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>{currentHostel.location || 'No location'}</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {!selectedManageHostel ? (
+                        <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#64748b', background: '#fff', borderRadius: '8px', marginTop: '1rem', border: '1px dashed #cbd5e1' }}>
+                            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🏢</div>
+                            <p style={{ fontSize: '1.1rem' }}>Please select a hostel from the dropdown above to view and manage its rooms.</p>
+                        </div>
+                    ) : loading ? (
+                        <div style={{ textAlign: 'center', padding: '2rem' }}>Loading...</div>
+                    ) : (
+                        <div style={{ marginTop: '1.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                <h3 style={{ margin: 0, color: '#1e293b' }}>
+                                    Rooms for {currentHostel?.name}
+                                </h3>
+                                <div style={{ fontSize: '0.9rem', color: '#64748b' }}>
+                                    Total Rooms: {filteredRooms.length}
+                                </div>
+                            </div>
+                            
+                            {currentHostel?.images && currentHostel.images.length > 0 && (
+                                <div style={{ marginBottom: '1.5rem' }}>
+                                    <h4 style={{ fontSize: '0.9rem', color: '#475569', marginBottom: '0.5rem' }}>Hostel Gallery Images</h4>
+                                    <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+                                        {currentHostel.images.map((img, idx) => (
+                                            <img key={idx} src={img.image} alt={`Gallery ${idx}`} style={{ width: '100px', height: '60px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
+                                        ))}
+                                    </div>
+                                </div>
                             )}
-                        </tbody>
-                    </table>
+
+                            <table className="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Room #</th>
+                                        <th>Type</th>
+                                        <th>Capacity</th>
+                                        <th>Price</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredRooms.map(r => (
+                                        <tr key={r.id}>
+                                            <td>{r.room_number}</td>
+                                            <td>{r.room_type}</td>
+                                            <td>{r.capacity}</td>
+                                            <td>UGX {Number(r.price_per_semester).toLocaleString()}</td>
+                                            <td>
+                                                <span style={{ 
+                                                    padding: '4px 10px', 
+                                                    borderRadius: '12px', 
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: '600',
+                                                    backgroundColor: r.is_available ? '#dcfce7' : '#fee2e2',
+                                                    color: r.is_available ? '#166534' : '#991b1b'
+                                                }}>
+                                                    {r.is_available ? 'Available' : 'Occupied'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <button className="btn-edit" onClick={() => handleEditRoom(r)} style={{marginRight: '5px'}}>Edit</button>
+                                                <button className="btn-delete" onClick={() => handleDeleteRoom(r.id)}>Delete</button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {filteredRooms.length === 0 && (
+                                        <tr>
+                                            <td colSpan="6" style={{textAlign: 'center', color: '#64748b', padding: '3rem'}}>
+                                                <p>No rooms found for this hostel.</p>
+                                                <button className="primary-btn black-btn" onClick={handleAddRoom} style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', width: 'auto' }}>Add First Room</button>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             );
         } else {
@@ -527,7 +774,7 @@ const AdminDashboard = () => {
             gender: editingHostel?.gender || 'Male',
             caretaker_phone: editingHostel?.caretaker_phone || '',
             rooms_status: editingHostel?.rooms_status || 'Available',
-            occupancy: editingHostel?.occupancy || '0/0'
+            image: null
         });
 
         const handleSubmit = (e) => {
@@ -624,6 +871,20 @@ const AdminDashboard = () => {
                             </select>
                         </div>
 
+                        <div style={{marginBottom: '1rem'}}>
+                            <label style={{display: 'block', marginBottom: '0.5rem'}}>Hostel Image</label>
+                            <input
+                                type="file" accept="image/*"
+                                onChange={(e) => setFormData({...formData, image: e.target.files[0]})}
+                                style={{width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px'}}
+                            />
+                            {editingHostel && editingHostel.image && (
+                                <div style={{marginTop: '0.5rem', fontSize: '0.85rem', color: '#666'}}>
+                                    Current image uploaded. Select a new one to replace it.
+                                </div>
+                            )}
+                        </div>
+
                         <div style={{display: 'flex', gap: '1rem', justifyContent: 'flex-end'}}>
                             <button type="button" onClick={() => setShowHostelModal(false)}
                                 style={{padding: '0.5rem 1rem', border: '1px solid #ddd', borderRadius: '4px', background: 'white'}}>
@@ -643,13 +904,13 @@ const AdminDashboard = () => {
     // Room Modal Component
     const RoomModal = () => {
         const [formData, setFormData] = useState({
-            room_number: '',
-            hostel: '',
-            room_type: 'Single',
-            capacity: 1,
-            price_per_semester: '',
-            facilities: '',
-            is_available: true
+            room_number: editingRoom?.room_number || '',
+            hostel: editingRoom?.hostel || selectedManageHostel || '',
+            room_type: editingRoom?.room_type || 'Single',
+            capacity: editingRoom?.capacity || 1,
+            price_per_semester: editingRoom?.price_per_semester || '',
+            facilities: editingRoom?.facilities || '',
+            is_available: editingRoom?.is_available !== undefined ? editingRoom.is_available : true
         });
 
         const handleSubmit = (e) => {
@@ -667,9 +928,9 @@ const AdminDashboard = () => {
             }}>
                 <div style={{
                     backgroundColor: 'white', padding: '2rem', borderRadius: '8px',
-                    width: '90%', maxWidth: '500px'
+                    width: '90%', maxWidth: '500px', maxHeight: '80vh', overflowY: 'auto'
                 }}>
-                    <h3>Add New Room</h3>
+                    <h3>{editingRoom ? 'Edit Room' : 'Add New Room'}</h3>
                     <form onSubmit={handleSubmit}>
                         <div style={{marginBottom: '1rem'}}>
                             <label style={{display: 'block', marginBottom: '0.5rem'}}>Room Number *</label>
@@ -729,6 +990,27 @@ const AdminDashboard = () => {
                             />
                         </div>
 
+                        <div style={{marginBottom: '1rem'}}>
+                            <label style={{display: 'block', marginBottom: '0.5rem'}}>Facilities</label>
+                            <textarea
+                                value={formData.facilities}
+                                onChange={(e) => setFormData({...formData, facilities: e.target.value})}
+                                placeholder="e.g. Wi-Fi, AC, Attached Bathroom"
+                                style={{width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px', minHeight: '80px'}}
+                            />
+                        </div>
+
+                        <div style={{marginBottom: '1rem'}}>
+                            <label style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                                <input
+                                    type="checkbox"
+                                    checked={formData.is_available}
+                                    onChange={(e) => setFormData({...formData, is_available: e.target.checked})}
+                                />
+                                Room is Available
+                            </label>
+                        </div>
+
                         <div style={{display: 'flex', gap: '1rem', justifyContent: 'flex-end'}}>
                             <button type="button" onClick={() => setShowRoomModal(false)}
                                 style={{padding: '0.5rem 1rem', border: '1px solid #ddd', borderRadius: '4px', background: 'white'}}>
@@ -736,7 +1018,7 @@ const AdminDashboard = () => {
                             </button>
                             <button type="submit"
                                 style={{padding: '0.5rem 1rem', border: 'none', borderRadius: '4px', background: '#000', color: 'white'}}>
-                                Add Room
+                                {editingRoom ? 'Update' : 'Add'} Room
                             </button>
                         </div>
                     </form>
@@ -748,10 +1030,13 @@ const AdminDashboard = () => {
     // Caretaker Modal Component
     const CaretakerModal = () => {
         const [formData, setFormData] = useState({
-            name: editingCaretaker?.name || '',
+            name: editingCaretaker ? displayUserName(editingCaretaker) : '',
             email: editingCaretaker?.email || '',
             phone: editingCaretaker?.phone || '',
-            gender: editingCaretaker?.gender || 'Male'
+            gender: editingCaretaker?.gender || 'Male',
+            password: '',
+            password_confirm: '',
+            assigned_hostel: hostels.find(h => h.caretaker_phone === editingCaretaker?.phone)?.id || ''
         });
 
         const handleSubmit = (e) => {
@@ -768,9 +1053,10 @@ const AdminDashboard = () => {
                 zIndex: 1000
             }}>
                 <div style={{
-                    backgroundColor: 'white', padding: '2rem', borderRadius: '8px',
-                    width: '90%', maxWidth: '500px'
-                }}>
+                        backgroundColor: 'white', padding: '2rem', borderRadius: '8px',
+                        width: '90%', maxWidth: '500px'
+                    }}
+                >
                     <h3>{editingCaretaker ? 'Edit Caretaker' : 'Add New Caretaker'}</h3>
                     <form onSubmit={handleSubmit}>
                         <div style={{marginBottom: '1rem'}}>
@@ -818,6 +1104,43 @@ const AdminDashboard = () => {
                             </select>
                         </div>
 
+                        <div style={{marginBottom: '1rem'}}>
+                            <label style={{display: 'block', marginBottom: '0.5rem'}}>Assign Hostel</label>
+                            <select
+                                value={formData.assigned_hostel}
+                                onChange={(e) => setFormData({...formData, assigned_hostel: e.target.value})}
+                                style={{width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px'}}
+                            >
+                                <option value="">Select Hostel (Optional)</option>
+                                {hostels.map(h => (
+                                    <option key={h.id} value={h.id}>{h.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {!editingCaretaker && (
+                            <>
+                                <div style={{marginBottom: '1rem'}}>
+                                    <label style={{display: 'block', marginBottom: '0.5rem'}}>Password *</label>
+                                    <input
+                                        type="password" required={!editingCaretaker}
+                                        value={formData.password}
+                                        onChange={(e) => setFormData({...formData, password: e.target.value})}
+                                        style={{width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px'}}
+                                    />
+                                </div>
+                                <div style={{marginBottom: '1rem'}}>
+                                    <label style={{display: 'block', marginBottom: '0.5rem'}}>Confirm password *</label>
+                                    <input
+                                        type="password" required={!editingCaretaker}
+                                        value={formData.password_confirm}
+                                        onChange={(e) => setFormData({...formData, password_confirm: e.target.value})}
+                                        style={{width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '4px'}}
+                                    />
+                                </div>
+                            </>
+                        )}
+
                         <div style={{display: 'flex', gap: '1rem', justifyContent: 'flex-end'}}>
                             <button type="button" onClick={() => setShowCaretakerModal(false)}
                                 style={{padding: '0.5rem 1rem', border: '1px solid #ddd', borderRadius: '4px', background: 'white'}}>
@@ -844,6 +1167,7 @@ const AdminDashboard = () => {
                     <ul className="admin-nav" style={{ listStyle: 'none', padding: 0 }}>
                         <li><button className={`admin-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Dashboard</button></li>
                         <li><button className={`admin-nav-item ${activeTab === 'manage-hostels' ? 'active' : ''}`} onClick={() => setActiveTab('manage-hostels')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Manage Hostels</button></li>
+                        <li><button className={`admin-nav-item ${activeTab === 'manage-rooms' ? 'active' : ''}`} onClick={() => setActiveTab('manage-rooms')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Manage Rooms</button></li>
                         <li><button className={`admin-nav-item ${activeTab === 'caretakers' ? 'active' : ''}`} onClick={() => setActiveTab('caretakers')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Caretakers</button></li>
                         <li><button className={`admin-nav-item ${activeTab === 'reservations' ? 'active' : ''}`} onClick={() => setActiveTab('reservations')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Reservations</button></li>
                         <li><button className={`admin-nav-item ${activeTab === 'students' ? 'active' : ''}`} onClick={() => setActiveTab('students')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Students</button></li>
@@ -858,7 +1182,7 @@ const AdminDashboard = () => {
             {/* Modals */}
             <HostelModal />
             <RoomModal />
-            <CaretakerModal />
+            <CaretakerModal key={showCaretakerModal ? (editingCaretaker ? `e-${editingCaretaker.id}` : 'new') : 'closed'} />
         </section>
     );
 };

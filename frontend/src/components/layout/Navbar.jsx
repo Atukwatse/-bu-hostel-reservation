@@ -1,11 +1,18 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { displayUserName } from '../../utils/userDisplayName';
 
 const Navbar = () => {
     const location = useLocation();
     
-    // For now we'll simulate auth state. In full app, we map this to useAuth / context.
-    const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+    const raw = localStorage.getItem('currentUser');
+    let currentUser = null;
+    try {
+        currentUser = raw ? JSON.parse(raw) : null;
+    } catch {
+        currentUser = null;
+    }
+    const who = displayUserName(currentUser);
 
     const handleLogout = () => {
         localStorage.removeItem('authToken');
@@ -34,6 +41,7 @@ const Navbar = () => {
                 <ul className="nav-links">
                     <li><Link to="/" className={`nav-item ${isActive('/')}`}>Home</Link></li>
                     <li><Link to="/hostels" className={`nav-item ${isActive('/hostels')}`}>View Hostels</Link></li>
+                    <li><Link to="/rating-review" className={`nav-item ${isActive('/rating-review')}`}>Rating & Review</Link></li>
                     <li><Link to="/inquiry" className={`nav-item ${isActive('/inquiry')}`}>Inquiry</Link></li>
                     
                     {!currentUser ? (
@@ -52,6 +60,11 @@ const Navbar = () => {
                                     >
                                         Admin Panel
                                     </Link>
+                                </li>
+                            )}
+                            {who && (
+                                <li className="nav-item" style={{ color: '#475569', fontSize: '0.9rem' }}>
+                                    {currentUser.role === 'admin' ? 'Admin' : 'Hi'}, {who}
                                 </li>
                             )}
                             <li>

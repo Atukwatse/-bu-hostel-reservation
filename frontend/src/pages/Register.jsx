@@ -21,9 +21,15 @@ const Register = () => {
             return;
         }
 
+        const trimmedName = formData.name.trim();
+        if (trimmedName.split(/\s+/).length < 2) {
+            alert('Please enter your full name (at least two names).');
+            return;
+        }
+
         try {
             const newUser = {
-                username: formData.name.trim(),
+                username: formData.email.trim(), // Use email as username for uniqueness
                 email: formData.email.trim(),
                 phone: formData.phone.trim(),
                 country_code: formData.countryCode,
@@ -32,17 +38,14 @@ const Register = () => {
                 role: 'student',
                 gender: formData.gender,
                 program_of_study: formData.course,
-                first_name: formData.name.trim().split(' ')[0] || '',
-                last_name: formData.name.trim().split(' ').slice(1).join(' ') || ''
+                first_name: trimmedName.split(/\s+/)[0] || '',
+                last_name: trimmedName.split(/\s+/).slice(1).join(' ') || '',
+                next_of_kin_name: formData.kinName.trim(),
+                next_of_kin_phone: formData.kinPhone.trim(),
+                next_of_kin_country_code: formData.kinCountryCode
             };
 
-            let response;
-            try {
-                response = await api.post(API_CONFIG.AUTH.REGISTER, newUser);
-            } catch(apiErr) {
-                console.warn('API signup failed, giving mock success', apiErr);
-                response = { token: 'mock_token', user: { name: formData.name, role: 'student', id: 99 }};
-            }
+            const response = await api.post(API_CONFIG.AUTH.REGISTER, newUser);
 
             api.setToken(response.token);
             localStorage.setItem('currentUser', JSON.stringify(response.user));

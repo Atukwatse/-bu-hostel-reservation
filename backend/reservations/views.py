@@ -2,8 +2,12 @@ from rest_framework import viewsets, status, permissions, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Q
+from django.db.models import Q, Sum
+from django.utils import timezone
+from django.contrib.auth import get_user_model
 from .models import Reservation, Payment, Inquiry, WaitingList
+
+User = get_user_model()
 from .serializers import (
     ReservationSerializer, ReservationCreateSerializer, PaymentSerializer,
     InquirySerializer, InquiryCreateSerializer, WaitingListSerializer
@@ -59,6 +63,25 @@ class ReservationViewSet(viewsets.ModelViewSet):
         
         reservation.status = 'confirmed'
         reservation.confirmed_at = timezone.now()
+        
+        # Mark pending payments as completed
+        pending_payments = reservation.payments.filter(status='pending')
+        for payment in pending_payments:
+            payment.status = 'completed'
+            payment.processed_at = timezone.now()
+            payment.save()
+        
+        # Update amount_paid and payment_status
+        total_paid = reservation.payments.filter(status='completed').aggregate(
+            total=Sum('amount')
+        )['total'] or 0
+        
+        reservation.amount_paid = total_paid
+        if total_paid >= reservation.total_amount:
+            reservation.payment_status = 'paid'
+        elif total_paid > 0:
+            reservation.payment_status = 'partial'
+            
         reservation.save()
         
         # Update room occupancy if room is assigned
@@ -66,7 +89,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
             reservation.room.current_occupancy += 1
             reservation.room.save()
         
-        return Response({'message': 'Reservation confirmed successfully'})
+        return Response({'message': 'Reservation and payments confirmed successfully'})
 
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
@@ -123,7 +146,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
             
             # Update reservation payment status
             total_paid = reservation.payments.filter(status='completed').aggregate(
-                total=models.Sum('amount')
+                total=Sum('amount')
             )['total'] or 0
             
             reservation.amount_paid = total_paid

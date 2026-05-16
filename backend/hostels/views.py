@@ -150,6 +150,13 @@ class RoomViewSet(viewsets.ModelViewSet):
     ordering_fields = ['room_number', 'price_per_semester', 'capacity']
     ordering = ['room_number']
 
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            self.permission_classes = [AllowAny]
+        else:
+            self.permission_classes = [IsAuthenticated]
+        return super().get_permissions()
+
     @action(detail=True, methods=['get'])
     def hostel_info(self, request, pk=None):
         """Get hostel information for a specific room"""
