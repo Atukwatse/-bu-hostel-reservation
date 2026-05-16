@@ -171,7 +171,17 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 if os.environ.get('FRONTEND_URL'):
-    CORS_ALLOWED_ORIGINS.append(os.environ.get('FRONTEND_URL'))
+    frontend_url = os.environ.get('FRONTEND_URL').strip().rstrip('/')
+    CORS_ALLOWED_ORIGINS.append(frontend_url)
+    CSRF_TRUSTED_ORIGINS.append(frontend_url)
+
+# Add specific production origin just in case
+if not DEBUG:
+    production_origin = "https://bu-hostel-reservation-frontend.onrender.com"
+    if production_origin not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(production_origin)
+    if production_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(production_origin)
 
 CORS_ALLOW_CREDENTIALS = True
 
@@ -191,6 +201,4 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5500",
     "http://127.0.0.1:5500",
 ]
-
-if os.environ.get('FRONTEND_URL'):
-    CSRF_TRUSTED_ORIGINS.append(os.environ.get('FRONTEND_URL'))
+# Additional origins from environment variables are handled in the CORS block above

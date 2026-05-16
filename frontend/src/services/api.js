@@ -159,6 +159,14 @@ class ApiClient {
             const text = await response.text();
             return text ? JSON.parse(text) : null;
         } catch (error) {
+            const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+            const isRelativeUrl = this.baseURL.startsWith('/');
+            
+            if (isProduction && isRelativeUrl) {
+                console.error(`DEPLOYMENT ERROR: The API is trying to fetch from a relative URL (${url}) on production. ` +
+                    `You likely forgot to set the VITE_API_URL environment variable on Render to your backend URL.`);
+            }
+            
             console.error(`API Error on ${options.method || 'GET'} ${url}:`, error.message || error);
             throw error;
         }

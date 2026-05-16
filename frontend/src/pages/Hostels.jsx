@@ -199,12 +199,25 @@ const Hostels = () => {
             <div className="hostels-content">
                 {loading ? (
                     <p style={{ textAlign: 'center', padding: '2rem' }}>Loading hostels...</p>
-                ) : filteredHostels.length === 0 ? (
-                    <p className="no-results" style={{ textAlign: 'center', padding: '2rem' }}>No hostels found matching your criteria.</p>
                 ) : (
                     <>
-                        {renderHostelGrid('university', universityHostels)}
-                        {renderHostelGrid('private', privateHostels)}
+                        {hostels.length === 2 && hostels[0].id === 1 && (
+                            <div style={{ backgroundColor: '#fff7ed', border: '1px solid #ffedd5', padding: '1rem', borderRadius: '8px', marginBottom: '2rem', textAlign: 'center' }}>
+                                <p style={{ color: '#9a3412', fontWeight: '500' }}>
+                                    ⚠️ Connection Issue: Could not connect to the backend server. 
+                                    Showing fallback data (Bensdorf and SL only). 
+                                    Please ensure your Backend URL is correctly configured in Render environment variables.
+                                </p>
+                            </div>
+                        )}
+                        {filteredHostels.length === 0 ? (
+                            <p className="no-results" style={{ textAlign: 'center', padding: '2rem' }}>No hostels found matching your criteria.</p>
+                        ) : (
+                            <>
+                                {renderHostelGrid('university', universityHostels)}
+                                {renderHostelGrid('private', privateHostels)}
+                            </>
+                        )}
                     </>
                 )}
             </div>
