@@ -1,0 +1,1 @@
+web: gunicorn bu_hostel_backend.wsgi
