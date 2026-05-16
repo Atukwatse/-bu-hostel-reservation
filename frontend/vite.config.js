@@ -16,10 +16,5 @@ export default defineConfig({
       allow: ['..']
     }
   },
-  resolve: {
-    alias: {
-      '/IMAGES': path.resolve(__dirname, '../IMAGES')
-    }
-  },
   publicDir: 'public'
 })

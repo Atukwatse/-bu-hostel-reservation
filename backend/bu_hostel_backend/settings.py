@@ -170,24 +170,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5500",
 ]
 
-if os.environ.get('FRONTEND_URL'):
-    frontend_url = os.environ.get('FRONTEND_URL').strip().rstrip('/')
-    CORS_ALLOWED_ORIGINS.append(frontend_url)
-    CSRF_TRUSTED_ORIGINS.append(frontend_url)
-
-# Add specific production origin just in case
-if not DEBUG:
-    production_origin = "https://bu-hostel-reservation-frontend.onrender.com"
-    if production_origin not in CORS_ALLOWED_ORIGINS:
-        CORS_ALLOWED_ORIGINS.append(production_origin)
-    if production_origin not in CSRF_TRUSTED_ORIGINS:
-        CSRF_TRUSTED_ORIGINS.append(production_origin)
-
-CORS_ALLOW_CREDENTIALS = True
-
-# Allow all origins for development
-CORS_ALLOW_ALL_ORIGINS = DEBUG
-
 # CSRF Trusted Origins for frontend
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:3000",
@@ -200,5 +182,32 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:5175",
     "http://localhost:5500",
     "http://127.0.0.1:5500",
+    "https://*.onrender.com",
 ]
+
+if os.environ.get('FRONTEND_URL'):
+    frontend_url = os.environ.get('FRONTEND_URL').strip().rstrip('/')
+    if frontend_url not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(frontend_url)
+    if frontend_url not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(frontend_url)
+
+# Add specific production origin just in case
+if not DEBUG:
+    production_origin = "https://bu-hostel-reservation-frontend.onrender.com"
+    if production_origin not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(production_origin)
+    if production_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(production_origin)
+    
+    # Add variant without https just in case
+    http_origin = production_origin.replace("https://", "http://")
+    if http_origin not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(http_origin)
+
+CORS_ALLOW_CREDENTIALS = True
+
+# Allow all origins for development
+CORS_ALLOW_ALL_ORIGINS = DEBUG
+
 # Additional origins from environment variables are handled in the CORS block above
