@@ -28,12 +28,8 @@ const Navbar = () => {
         <header className="main-header">
             <div className="header-logo">
                 <img 
-                    src="/IMAGES/logo.png" 
+                    src="https://upload.wikimedia.org/wikipedia/commons/0/0b/Bugema_logo.png" 
                     alt="BU Logo" 
-                    onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/0/0b/Bugema_logo.png';
-                    }} 
                 />
             </div>
             <h1 className="header-title">BU ROOM RESERVATION SYSTEM</h1>

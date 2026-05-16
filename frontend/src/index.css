@@ -153,7 +153,7 @@ main {
     left: 0;
     width: 60%;
     height: 100%;
-    background-image: url('IMAGES/home.png');
+    background-image: url('/IMAGES/home.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -169,7 +169,7 @@ main {
     right: 0;
     width: 60%;
     height: 100%;
-    background-image: url('IMAGES/home2.png');
+    background-image: url('/IMAGES/home2.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -886,7 +886,7 @@ main {
 
 /* Background Images for Pages */
 #inquiry {
-    background-image: url('IMAGES/home2.png');
+    background-image: url('/IMAGES/home2.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -894,7 +894,7 @@ main {
 }
 
 #login {
-    background-image: url('IMAGES/home2.png');
+    background-image: url('/IMAGES/home2.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -902,7 +902,7 @@ main {
 }
 
 #create-account {
-    background-image: url('IMAGES/home2.png');
+    background-image: url('/IMAGES/home2.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -958,7 +958,7 @@ main {
 
 /* Admin Panel Professional Styling */
 #admin-panel {
-    background-image: url('IMAGES/home2.png');
+    background-image: url('/IMAGES/home2.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -1249,7 +1249,7 @@ main {
 
 /* Hostels Page Background - Clean approach */
 #hostels {
-    background-image: url('IMAGES/home2.png');
+    background-image: url('/IMAGES/home2.png');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
