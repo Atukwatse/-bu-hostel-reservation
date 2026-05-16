@@ -42,6 +42,7 @@ class HostelSerializer(serializers.ModelSerializer):
     average_rating = serializers.ReadOnlyField()
     total_rooms = serializers.SerializerMethodField()
     available_rooms = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = Hostel
@@ -58,11 +59,17 @@ class HostelSerializer(serializers.ModelSerializer):
     def get_available_rooms(self, obj):
         return obj.rooms.filter(is_available=True).count()
 
+    def get_image(self, obj):
+        if not obj.image:
+            return None
+        return str(obj.image)
+
 
 class HostelListSerializer(serializers.ModelSerializer):
     average_rating = serializers.ReadOnlyField()
     total_rooms = serializers.SerializerMethodField()
     available_rooms = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model = Hostel
@@ -77,6 +84,11 @@ class HostelListSerializer(serializers.ModelSerializer):
 
     def get_available_rooms(self, obj):
         return obj.rooms.filter(is_available=True).count()
+
+    def get_image(self, obj):
+        if not obj.image:
+            return None
+        return str(obj.image)
 
 
 class ReviewCreateSerializer(serializers.ModelSerializer):
