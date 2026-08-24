@@ -16,7 +16,7 @@ class UserAdmin(BaseUserAdmin):
             'fields': ('username', 'first_name', 'last_name', 'email', 'phone', 'country_code')
         }),
         ('Academic Information', {
-            'fields': ('role', 'gender', 'student_id', 'program_of_study', 'year_of_study')
+            'fields': ('role', 'gender', 'student_reg_no', 'program_of_study', 'year_of_study')
         }),
         ('Emergency Contact', {
             'fields': ('next_of_kin_name', 'next_of_kin_phone', 'next_of_kin_country_code')

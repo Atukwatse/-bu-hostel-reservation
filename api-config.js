@@ -36,6 +36,7 @@ const API_CONFIG = {
         UPDATE_PROFILE: '/users/users/profile/',
         LOGIN_HISTORY: '/users/users/login_history/',
         STATS: '/users/users/stats/',
+        CARETAKERS_CREATE: '/users/users/caretakers/',
     },
     
     // Reservation endpoints
@@ -113,11 +114,31 @@ class ApiClient {
             }
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || errorData.message || `HTTP ${response.status}`);
+                let errorText = await response.text().catch(() => '');
+                let errorData = {};
+                try {
+                    errorData = JSON.parse(errorText);
+                } catch (e) {
+                    // Not JSON
+                }
+                
+                let errorMessage = errorData.detail || errorData.message || errorData.error;
+                
+                // If it's a validation error object from Django
+                if (!errorMessage && Object.keys(errorData).length > 0) {
+                    const errorMessages = [];
+                    for (const [key, value] of Object.entries(errorData)) {
+                        const valStr = Array.isArray(value) ? value.join(', ') : value;
+                        errorMessages.push(`${key}: ${valStr}`);
+                    }
+                    errorMessage = errorMessages.join(' | ');
+                }
+                
+                throw new Error(errorMessage || `HTTP ${response.status}`);
             }
 
-            return await response.json();
+            const text = await response.text();
+            return text ? JSON.parse(text) : null;
         } catch (error) {
             console.error('API Error:', error);
             throw error;
@@ -159,7 +180,7 @@ class ApiClient {
     }
 
     // File upload
-    async upload(endpoint, formData) {
+    async upload(endpoint, formData, method = 'POST') {
         const url = `${this.baseURL}${endpoint}`;
         const headers = {};
         
@@ -169,17 +190,37 @@ class ApiClient {
 
         try {
             const response = await fetch(url, {
-                method: 'POST',
+                method: method,
                 headers,
                 body: formData,
             });
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.detail || errorData.message || `HTTP ${response.status}`);
+                let errorText = await response.text().catch(() => '');
+                let errorData = {};
+                try {
+                    errorData = JSON.parse(errorText);
+                } catch (e) {
+                    // Not JSON
+                }
+                
+                let errorMessage = errorData.detail || errorData.message || errorData.error;
+                
+                // If it's a validation error object from Django
+                if (!errorMessage && Object.keys(errorData).length > 0) {
+                    const errorMessages = [];
+                    for (const [key, value] of Object.entries(errorData)) {
+                        const valStr = Array.isArray(value) ? value.join(', ') : value;
+                        errorMessages.push(`${key}: ${valStr}`);
+                    }
+                    errorMessage = errorMessages.join(' | ');
+                }
+                
+                throw new Error(errorMessage || `HTTP ${response.status}`);
             }
 
-            return await response.json();
+            const text = await response.text();
+            return text ? JSON.parse(text) : null;
         } catch (error) {
             console.error('Upload Error:', error);
             throw error;

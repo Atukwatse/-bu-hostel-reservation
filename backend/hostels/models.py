@@ -37,7 +37,7 @@ class Hostel(models.Model):
         choices=ROOM_STATUS_CHOICES, 
         default='Available'
     )
-    image = models.ImageField(upload_to='hostel_images/', blank=True, null=True)
+    image = models.ImageField(upload_to='room_images/', blank=False, null=False, default='room_images/placeholder.jpg')
     description = models.TextField(blank=True)
     facilities = models.TextField(blank=True)  # Comma-separated facilities
     location = models.CharField(max_length=200, blank=True)
@@ -85,6 +85,7 @@ class Room(models.Model):
     current_occupancy = models.PositiveIntegerField(default=0)
     price_per_semester = models.DecimalField(max_digits=10, decimal_places=2)
     facilities = models.TextField(blank=True)  # Comma-separated facilities
+    image = models.ImageField(upload_to='room_images/', blank=False, null=False, default='room_images/placeholder.jpg')
     is_available = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

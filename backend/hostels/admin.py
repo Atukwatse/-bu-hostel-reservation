@@ -43,8 +43,8 @@ class HostelImageAdmin(admin.ModelAdmin):
 
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
-    list_display = ['hostel', 'room_number', 'room_type', 'capacity', 'current_occupancy', 'price_per_semester', 'is_available']
-    list_filter = ['hostel', 'room_type', 'is_available', 'created_at']
+    list_display = ['hostel', 'room_number', 'room_type', 'capacity', 'current_occupancy', 'price_per_semester', 'is_available', 'image']
+    list_filter = ['hostel', 'room_type', 'is_available', 'created_at', 'image']
     search_fields = ['hostel__name', 'room_number']
     readonly_fields = ['created_at', 'updated_at']
     

@@ -9,6 +9,8 @@ const Register = () => {
         kinName: '', kinPhone: '', kinCountryCode: '+256',
         gender: '', course: '', password: '', confirmPassword: ''
     });
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const handleChange = (e) => {
         setFormData({...formData, [e.target.id]: e.target.value});
@@ -21,9 +23,36 @@ const Register = () => {
             return;
         }
 
+        const trimmedName = formData.name.trim();
+        if (trimmedName.split(/\s+/).length < 2) {
+            alert('Please enter your full name (at least two names).');
+            return;
+        }
+
+        // Validate phone numbers - digits only
+        const phoneRegex = /^\d+$/;
+        if (!phoneRegex.test(formData.phone.trim())) {
+            alert('Phone number must contain only digits (no letters or special characters).');
+            return;
+        }
+        if (!phoneRegex.test(formData.kinPhone.trim())) {
+            alert('Next of kin phone number must contain only digits (no letters or special characters).');
+            return;
+        }
+
+        // Validate phone length (minimum 6 digits for most countries)
+        if (formData.phone.trim().length < 6) {
+            alert('Phone number must be at least 6 digits long.');
+            return;
+        }
+        if (formData.kinPhone.trim().length < 6) {
+            alert('Next of kin phone number must be at least 6 digits long.');
+            return;
+        }
+
         try {
             const newUser = {
-                username: formData.name.trim(),
+                username: formData.email.trim(), // Use email as username for uniqueness
                 email: formData.email.trim(),
                 phone: formData.phone.trim(),
                 country_code: formData.countryCode,
@@ -32,17 +61,14 @@ const Register = () => {
                 role: 'student',
                 gender: formData.gender,
                 program_of_study: formData.course,
-                first_name: formData.name.trim().split(' ')[0] || '',
-                last_name: formData.name.trim().split(' ').slice(1).join(' ') || ''
+                first_name: trimmedName.split(/\s+/)[0] || '',
+                last_name: trimmedName.split(/\s+/).slice(1).join(' ') || '',
+                next_of_kin_name: formData.kinName.trim(),
+                next_of_kin_phone: formData.kinPhone.trim(),
+                next_of_kin_country_code: formData.kinCountryCode
             };
 
-            let response;
-            try {
-                response = await api.post(API_CONFIG.AUTH.REGISTER, newUser);
-            } catch(apiErr) {
-                console.warn('API signup failed, giving mock success', apiErr);
-                response = { token: 'mock_token', user: { name: formData.name, role: 'student', id: 99 }};
-            }
+            const response = await api.post(API_CONFIG.AUTH.REGISTER, newUser);
 
             api.setToken(response.token);
             localStorage.setItem('currentUser', JSON.stringify(response.user));
@@ -165,10 +191,50 @@ const Register = () => {
 
                     <h3 className="form-section-heading">SECURITY</h3>
                     <label htmlFor="password">Password</label>
-                    <input type="password" id="password" minLength="8" placeholder="e.g. SecurePass123! (Min 8 characters)" value={formData.password} onChange={handleChange} required />
+                    <div style={{ position: 'relative', width: '100%', marginBottom: '15px' }}>
+                        <input 
+                            type={showPassword ? "text" : "password"} 
+                            id="password" 
+                            minLength="8" 
+                            placeholder="e.g. SecurePass123! (Min 8 characters)" 
+                            value={formData.password} 
+                            onChange={handleChange} 
+                            required 
+                            style={{ width: '100%', paddingRight: '40px', marginBottom: 0 }}
+                        />
+                        <button 
+                            type="button" 
+                            onClick={() => setShowPassword(!showPassword)}
+                            style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', padding: 0 }}
+                            aria-label={showPassword ? "Hide password" : "Show password"}
+                            title={showPassword ? "Hide password" : "Show password"}
+                        >
+                            {showPassword ? "🙈" : "👁️"}
+                        </button>
+                    </div>
                     
                     <label htmlFor="confirmPassword">Confirm Password</label>
-                    <input type="password" id="confirmPassword" minLength="8" placeholder="e.g. SecurePass123!" value={formData.confirmPassword} onChange={handleChange} required />
+                    <div style={{ position: 'relative', width: '100%', marginBottom: '20px' }}>
+                        <input 
+                            type={showConfirmPassword ? "text" : "password"} 
+                            id="confirmPassword" 
+                            minLength="8" 
+                            placeholder="e.g. SecurePass123!" 
+                            value={formData.confirmPassword} 
+                            onChange={handleChange} 
+                            required 
+                            style={{ width: '100%', paddingRight: '40px', marginBottom: 0 }}
+                        />
+                        <button 
+                            type="button" 
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', padding: 0 }}
+                            aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                            title={showConfirmPassword ? "Hide password" : "Show password"}
+                        >
+                            {showConfirmPassword ? "🙈" : "👁️"}
+                        </button>
+                    </div>
 
                     <button type="submit" className="primary-btn black-btn">Sign Up</button>
                     <p className="form-footer-text">Already have an account? <Link to="/login">Sign in</Link></p>

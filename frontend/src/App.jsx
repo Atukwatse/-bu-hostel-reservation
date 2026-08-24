@@ -8,6 +8,7 @@ import Inquiry from './pages/Inquiry';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
+import RatingAndReview from './pages/RatingAndReview';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/admin" element={<AdminDashboard />} />
+          <Route path="/reviews" element={<RatingAndReview />} />
         </Routes>
       </main>
       <Footer />

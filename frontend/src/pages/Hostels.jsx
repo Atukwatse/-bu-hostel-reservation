@@ -3,6 +3,7 @@ import { api, API_CONFIG } from '../services/api';
 import '../Hostels.css';
 
 const Hostels = () => {
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
     const [hostels, setHostels] = useState([]);
     const [filteredHostels, setFilteredHostels] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -15,28 +16,51 @@ const Hostels = () => {
     const [selectedRoom, setSelectedRoom] = useState(null);
     const [viewRoomsModal, setViewRoomsModal] = useState(false);
     const [reservationModal, setReservationModal] = useState(false);
+    const [roomDetailsModal, setRoomDetailsModal] = useState(false);
+    const [selectedRoomDetails, setSelectedRoomDetails] = useState(null);
     const [paymentMethod, setPaymentMethod] = useState('');
     const [userRatings, setUserRatings] = useState({});
+    const [rooms, setRooms] = useState([]);
+    const [loadingRooms, setLoadingRooms] = useState(false);
 
     useEffect(() => {
-        // True authentic user data with both university and private hostels
-        const completeData = [
-            // University Hostels
-            { id: 1, name: "Bensdorf Hostel", type: "university", price: "UGX 750,000 /sem", gender: "Female", occupancy: "45/60 Occupied", rating: 4.0, reviews: 12, caretaker: "0769559707", rooms: "Available", image: "/IMAGES/bensdorf.png" },
-            { id: 2, name: "SL Hostel", type: "university", price: "UGX 650,000 /sem", gender: "Male", occupancy: "85/100 Occupied", rating: 4.8, reviews: 24, caretaker: "0744895697", rooms: "Available", image: "/IMAGES/sl.png" },
-            { id: 3, name: "Seattle Hostel", type: "university", price: "UGX 680,000 /sem", gender: "Male", occupancy: "120/120 Occupied", rating: 3.2, reviews: 8, caretaker: "0744895697", rooms: "Full", image: "/IMAGES/seatle.png" },
-            { id: 4, name: "Clifford Hostel", type: "university", price: "UGX 700,000 /sem", gender: "Female", occupancy: "70/80 Occupied", rating: 4.2, reviews: 19, caretaker: "0769559707", rooms: "Available", image: "/IMAGES/clifford.png" },
-            
-            // Private Hostels (names from IMAGES folder)
-            { id: 5, name: "Kenmor Hostel", type: "private", price: "UGX 450,000 /sem", gender: "Male", occupancy: "25/30 Occupied", rating: 4.2, reviews: 18, caretaker: "0772345678", rooms: "Available", image: "/IMAGES/kenmor.png" },
-            { id: 6, name: "Rose Hostel", type: "private", price: "UGX 400,000 /sem", gender: "Female", occupancy: "20/25 Occupied", rating: 4.0, reviews: 15, caretaker: "0765432109", rooms: "Available", image: "/IMAGES/rose.png" },
-            { id: 7, name: "Endvor Hostel", type: "private", price: "UGX 480,000 /sem", gender: "Mixed", occupancy: "18/24 Occupied", rating: 3.9, reviews: 22, caretaker: "0734567890", rooms: "Available", image: "/IMAGES/endvor.png" },
-            { id: 8, name: "City View Hostel", type: "private", price: "UGX 420,000 /sem", gender: "Male", occupancy: "30/35 Occupied", rating: 4.1, reviews: 12, caretaker: "0787654321", rooms: "Available", image: "/IMAGES/cityview.png" }
-        ];
+        const fetchHostels = async () => {
+            try {
+                setLoading(true);
+                const response = await api.get(API_CONFIG.HOSTELS.LIST);
+                const hostelsData = response.results || response;
+                
+                // Process hostels data to match expected format
+                const processedHostels = hostelsData.map(hostel => ({
+                    ...hostel,
+                    occupancy: hostel.total_rooms > 0 ? `${hostel.available_rooms}/${hostel.total_rooms}` : hostel.occupancy || 'N/A',
+                    rooms: hostel.rooms_status || 'Available',
+                    rating: hostel.rating || 0.0,
+                    reviews: hostel.reviews || 0,
+                    image: hostel.image || '/IMAGES/default-hostel.png'
+                }));
+                
+                setHostels(processedHostels);
+                setFilteredHostels(processedHostels);
+            } catch (error) {
+                console.error('Failed to fetch hostels:', error);
+                // Fallback to mock data if API fails
+                const fallbackData = [
+                    { id: 1, name: "Bensdorf Hostel", type: "university", price: "UGX 750,000 /sem", gender: "Female", occupancy: "45/60 Occupied", rating: 4.0, reviews: 12, caretaker_phone: "0769559707", rooms_status: "Available", image: "/IMAGES/bensdorf.png" },
+                    { id: 2, name: "SL Hostel", type: "university", price: "UGX 650,000 /sem", gender: "Male", occupancy: "85/100 Occupied", rating: 4.8, reviews: 24, caretaker_phone: "0744895697", rooms_status: "Available", image: "/IMAGES/sl.png" }
+                ];
+                const processedFallback = fallbackData.map(hostel => ({
+                    ...hostel,
+                    rooms: hostel.rooms_status || 'Available'
+                }));
+                setHostels(processedFallback);
+                setFilteredHostels(processedFallback);
+            } finally {
+                setLoading(false);
+            }
+        };
         
-        setHostels(completeData);
-        setFilteredHostels(completeData);
-        setLoading(false);
+        fetchHostels();
     }, []);
 
     useEffect(() => {
@@ -49,22 +73,59 @@ const Hostels = () => {
         setFilteredHostels(filtered);
     }, [searchTerm, typeFilter, genderFilter, hostels]);
 
-    const handleViewRooms = (h) => {
+    const handleViewRooms = async (h) => {
         setSelectedHostel(h);
         setViewRoomsModal(true);
+        setLoadingRooms(true);
+        
+        try {
+            // Fetch rooms for this hostel from backend
+            const response = await api.get(`/hostels/hostels/${h.id}/rooms/`);
+            const roomsData = response.results || response;
+            setRooms(roomsData || []);
+        } catch (error) {
+            console.error('Failed to fetch rooms:', error);
+            // Fallback to mock rooms if API fails
+            const prefix = h.name.charAt(0).toUpperCase();
+            const mockRooms = [
+                { id: 1, room_number: `${prefix}1`, room_type: 'Single', capacity: 1, facilities: 'En-suite Bath, Desk, Wi-Fi', is_available: true },
+                { id: 2, room_number: `${prefix}2`, room_type: 'Double', capacity: 2, facilities: 'Shared Bath, Wardrobe, Wi-Fi', is_available: true },
+                { id: 3, room_number: `${prefix}3`, room_type: 'Dormitory', capacity: 4, facilities: 'Common Bath, Lockers, Wi-Fi', is_available: true },
+                { id: 4, room_number: `${prefix}4`, room_type: 'Double', capacity: 2, facilities: 'En-suite Bath, Balcony, Wi-Fi', is_available: true },
+                { id: 5, room_number: `${prefix}5`, room_type: 'Single', capacity: 1, facilities: 'Premium En-suite, A/C, Wi-Fi', is_available: true }
+            ];
+            setRooms(mockRooms);
+        } finally {
+            setLoadingRooms(false);
+        }
     };
 
     const handleBookNow = (h) => {
+        if (!currentUser) {
+            alert('Please sign up or log in first to reserve a room.');
+            window.location.href = '/register';
+            return;
+        }
         setSelectedHostel(h);
         setSelectedRoom(null); // Reset selected room when opening directly
         setReservationModal(true);
     };
 
     const handleSelectRoom = (h, roomName) => {
+        if (!currentUser) {
+            alert('Please sign up or log in first to reserve a room.');
+            window.location.href = '/register';
+            return;
+        }
         setSelectedHostel(h);
         setSelectedRoom(roomName);
         setViewRoomsModal(false);
         setReservationModal(true);
+    };
+
+    const handleViewRoomDetails = (room) => {
+        setSelectedRoomDetails(room);
+        setRoomDetailsModal(true);
     };
 
     const renderHostelGrid = (category, data) => {
@@ -86,11 +147,6 @@ const Hostels = () => {
                             <div className="h-content">
                                 <div className="h-header-row">
                                     <h3 className="h-title">{h.name}</h3>
-                                    <div className="h-rating">
-                                        <span className="star" style={{ color: '#fbbf24' }}>★</span>
-                                        <strong>{h.rating}</strong>
-                                        <span className="reviews">({h.reviews})</span>
-                                    </div>
                                 </div>
                                 <div className="h-details">
                                     <span>👤 {h.gender} Only</span>
@@ -101,14 +157,14 @@ const Hostels = () => {
                                 </div>
                                 <div className="h-actions">
                                     <button className="h-btn-outline" onClick={() => handleViewRooms(h)}>View Rooms</button>
-                                    <button className={`h-btn-solid ${h.rooms === 'Full' ? 'full-btn' : ''}`} disabled={h.rooms === 'Full'} onClick={() => handleBookNow(h)}>
-                                        {h.rooms === 'Full' ? 'Hostel Full' : 'Reserve Now'}
+                                    <button className={`h-btn-solid ${h.rooms?.toLowerCase() === 'full' ? 'full-btn' : ''}`} disabled={h.rooms?.toLowerCase() === 'full'} onClick={() => handleBookNow(h)}>
+                                        {h.rooms?.toLowerCase() === 'full' ? 'Hostel Full' : 'Reserve Now'}
                                     </button>
                                 </div>
                                 <div className="h-custodian">
-                                    <strong>Caretaker:</strong> {h.caretaker}<br/>
-                                    <a href={`tel:${h.caretaker}`} style={{color: '#3b82f6', textDecoration: 'none'}}>
-                                        📞 Call {h.caretaker}
+                                    <strong>Caretaker:</strong> {h.caretaker_phone}<br/>
+                                    <a href={`tel:${h.caretaker_phone}`} style={{color: '#3b82f6', textDecoration: 'none'}}>
+                                        📞 Call {h.caretaker_phone}
                                     </a>
                                 </div>
                             </div>
@@ -172,73 +228,59 @@ const Hostels = () => {
                     <div className="modal-content" style={{maxWidth: '700px'}}>
                         <span className="close-modal" onClick={() => setViewRoomsModal(false)}>&times;</span>
                         <h2>Available Rooms at {selectedHostel.name}</h2>
-                        <div style={{marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-                            <span style={{color: '#475569', fontWeight: '500'}}>Rate This Hostel:</span>
-                            {[1, 2, 3, 4, 5].map((star) => (
-                                <span 
-                                    key={star} 
-                                    style={{
-                                        cursor: 'pointer', 
-                                        fontSize: '1.8rem', 
-                                        color: star <= (userRatings[selectedHostel.id] || 0) ? '#fbbf24' : '#cbd5e1',
-                                        transition: 'color 0.2s',
-                                        lineHeight: '1'
-                                    }} 
-                                    onClick={() => {
-                                        setUserRatings(prev => ({...prev, [selectedHostel.id]: star}));
-                                        alert(`Thank you for rating ${selectedHostel.name} with ${star} stars!`);
-                                    }}
-                                >
-                                    &#9733;
-                                </span>
-                            ))}
-                        </div>
                         <div className="rooms-container">
-                            <table className="rooms-table" style={{width: '100%', borderCollapse: 'collapse', textAlign: 'left', marginTop: '1rem'}}>
-                                <thead>
-                                    <tr>
-                                        <th style={{padding: '0.75rem', borderBottom: '2px solid #e2e8f0', color: '#475569', fontWeight: '600'}}>Room</th>
-                                        <th style={{padding: '0.75rem', borderBottom: '2px solid #e2e8f0', color: '#475569', fontWeight: '600'}}>Type</th>
-                                        <th style={{padding: '0.75rem', borderBottom: '2px solid #e2e8f0', color: '#475569', fontWeight: '600'}}>Capacity</th>
-                                        <th style={{padding: '0.75rem', borderBottom: '2px solid #e2e8f0', color: '#475569', fontWeight: '600'}}>Facilities</th>
-                                        <th style={{padding: '0.75rem', borderBottom: '2px solid #e2e8f0', color: '#475569', fontWeight: '600'}}>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {(() => {
-                                        // Generate dynamic rooms based on hostel name initial (matching original app.js)
-                                        const prefix = selectedHostel.name.charAt(0).toUpperCase();
-                                        const roomConfigs = [
-                                            { type: 'Single', capacity: '1 Person', facilities: 'En-suite Bath, Desk, Wi-Fi' },
-                                            { type: 'Double', capacity: '2 People', facilities: 'Shared Bath, Wardrobe, Wi-Fi' },
-                                            { type: 'Dormitory', capacity: '4 People', facilities: 'Common Bath, Lockers, Wi-Fi' },
-                                            { type: 'Double', capacity: '2 People', facilities: 'En-suite Bath, Balcony, Wi-Fi' },
-                                            { type: 'Single', capacity: '1 Person', facilities: 'Premium En-suite, A/C, Wi-Fi' }
-                                        ];
-
-                                        return roomConfigs.map((room, index) => {
-                                            const roomName = `${prefix}${index + 1}`;
-                                            return (
-                                                <tr key={index}>
-                                                    <td style={{padding: '0.75rem', borderBottom: '1px solid #e2e8f0'}}><strong>{roomName}</strong></td>
-                                                    <td style={{padding: '0.75rem', borderBottom: '1px solid #e2e8f0'}}>{room.type}</td>
-                                                    <td style={{padding: '0.75rem', borderBottom: '1px solid #e2e8f0'}}>{room.capacity}</td>
-                                                    <td style={{padding: '0.75rem', borderBottom: '1px solid #e2e8f0', fontSize: '0.85rem', color: '#64748b'}}>{room.facilities}</td>
-                                                    <td style={{padding: '0.75rem', borderBottom: '1px solid #e2e8f0'}}>
+                            {loadingRooms ? (
+                                <p style={{textAlign: 'center', padding: '2rem'}}>Loading rooms...</p>
+                            ) : rooms.length > 0 ? (
+                                <table className="rooms-table" style={{width: '100%', borderCollapse: 'collapse', textAlign: 'left', marginTop: '1rem'}}>
+                                    <thead>
+                                        <tr>
+                                            <th style={{padding: '0.75rem', borderBottom: '2px solid #e2e8f0', color: '#475569', fontWeight: '600'}}>Image</th>
+                                            <th style={{padding: '0.75rem', borderBottom: '2px solid #e2e8f0', color: '#475569', fontWeight: '600'}}>Room</th>
+                                            <th style={{padding: '0.75rem', borderBottom: '2px solid #e2e8f0', color: '#475569', fontWeight: '600'}}>Type</th>
+                                            <th style={{padding: '0.75rem', borderBottom: '2px solid #e2e8f0', color: '#475569', fontWeight: '600'}}>Capacity</th>
+                                            <th style={{padding: '0.75rem', borderBottom: '2px solid #e2e8f0', color: '#475569', fontWeight: '600'}}>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {rooms.map((room) => (
+                                            <tr key={room.id}>
+                                                <td style={{padding: '0.75rem', borderBottom: '1px solid #e2e8f0'}}>
+                                                    {room.image && !room.image.includes('placeholder.jpg') ? (
+                                                        <img src={room.image} alt={room.room_number} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
+                                                    ) : (
+                                                        <div style={{ width: '40px', height: '40px', background: '#e2e8f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', color: '#94a3b8' }}>No Img</div>
+                                                    )}
+                                                </td>
+                                                <td style={{padding: '0.75rem', borderBottom: '1px solid #e2e8f0'}}><strong>{room.room_number}</strong></td>
+                                                <td style={{padding: '0.75rem', borderBottom: '1px solid #e2e8f0'}}>{room.room_type}</td>
+                                                <td style={{padding: '0.75rem', borderBottom: '1px solid #e2e8f0'}}>{room.capacity} People</td>
+                                                <td style={{padding: '0.75rem', borderBottom: '1px solid #e2e8f0'}}>
+                                                    <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
                                                         <button 
                                                             className="h-btn-solid" 
                                                             style={{padding: '0.4rem 0.8rem', fontSize: '0.8rem', borderRadius: '4px'}} 
-                                                            onClick={() => handleSelectRoom(selectedHostel, roomName)}
+                                                            disabled={!room.is_available}
+                                                            onClick={() => handleSelectRoom(selectedHostel, room.room_number)}
                                                         >
-                                                            Select
+                                                            {room.is_available ? 'Select' : 'Occupied'}
                                                         </button>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        });
-                                    })()}
-                                </tbody>
-                            </table>
+                                                        <button 
+                                                            className="h-btn-outline" 
+                                                            style={{padding: '0.4rem 0.8rem', fontSize: '0.8rem', borderRadius: '4px', whiteSpace: 'nowrap'}} 
+                                                            onClick={() => handleViewRoomDetails(room)}
+                                                        >
+                                                            View Details
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <p style={{textAlign: 'center', padding: '2rem'}}>No rooms available for this hostel.</p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -263,13 +305,33 @@ const Hostels = () => {
                             }
                             
                             try {
+                                const regNoInput = document.getElementById('resStudentRegNo')?.value || '';
+                                const regNoClean = regNoInput.trim().toUpperCase();
+                                
+                                // Validate Reg No: YY/COURSE/BU/R/XXXX (4 digits)
+                                const regNoRegex = /^\d{2}\/[A-Za-z]+\/BU\/R\/\d{4}$/i;
+                                if (!regNoRegex.test(regNoClean)) {
+                                    alert('Invalid Student Registration Number format!\n\nIt must match: YY/COURSE/BU/R/XXXX\n- YY: Year (e.g., 24)\n- COURSE: Course code (e.g., BSE)\n- BU & R: Constants\n- XXXX: Exactly 4 digits (e.g., 0008)\n\nExample: 24/BSE/BU/R/0008');
+                                    return;
+                                }
+
                                 const isUpload = document.getElementById('paymentMethod')?.value === 'upload_receipt';
                                 let response;
                                 
                                 const priceString = selectedHostel.price || '0';
                                 const totalAmount = parseFloat(priceString.replace(/[^0-9.-]+/g,"")) || 0;
-                                const notesInfo = `Student ID: ${document.getElementById('resStudentId')?.value}, Gender: ${document.getElementById('resGender')?.value}, Room Type: ${document.getElementById('resRoomType')?.value}, Room Number: ${document.getElementById('resRoomNumber')?.value || selectedRoom}`;
+                                const notesInfo = `Student Reg No: ${regNoClean}, Gender: ${document.getElementById('resGender')?.value}, Room Type: ${document.getElementById('resRoomType')?.value}, Room Number: ${document.getElementById('resRoomNumber')?.value || selectedRoom}`;
                                 
+                                const bookingDate = document.getElementById('resBookingDate')?.value || '';
+                                let checkOutStr = '2024-12-20';
+                                if (bookingDate) {
+                                    const bookingDateVal = new Date(bookingDate);
+                                    const checkOutDateVal = new Date(bookingDateVal);
+                                    checkOutDateVal.setMonth(checkOutDateVal.getMonth() + 4);
+                                    checkOutStr = checkOutDateVal.toISOString().split('T')[0];
+                                }
+                                const transactionId = document.getElementById('transactionId')?.value || '';
+
                                 if (isUpload) {
                                     const formData = new FormData();
                                     formData.append('hostel', selectedHostel.id);
@@ -277,8 +339,10 @@ const Hostels = () => {
                                     formData.append('total_amount', totalAmount);
                                     formData.append('semester', 'Fall 2024');
                                     formData.append('academic_year', '2024-2025');
-                                    formData.append('check_in_date', '2024-09-01');
-                                    formData.append('check_out_date', '2024-12-20');
+                                    formData.append('check_in_date', bookingDate || '2024-09-01');
+                                    formData.append('check_out_date', checkOutStr);
+                                    formData.append('booking_date', bookingDate);
+                                    formData.append('transaction_id', transactionId);
                                     formData.append('notes', notesInfo);
                                     
                                     const fileInput = document.getElementById('receiptUpload');
@@ -294,8 +358,10 @@ const Hostels = () => {
                                         total_amount: totalAmount,
                                         semester: 'Fall 2024',
                                         academic_year: '2024-2025',
-                                        check_in_date: '2024-09-01',
-                                        check_out_date: '2024-12-20',
+                                        check_in_date: bookingDate || '2024-09-01',
+                                        check_out_date: checkOutStr,
+                                        booking_date: bookingDate,
+                                        transaction_id: transactionId,
                                         notes: notesInfo
                                     };
                                     
@@ -309,13 +375,20 @@ const Hostels = () => {
                                 alert(`Reservation failed: ${error.message || 'Please check your connection and try again.'}`);
                             }
                         }}>
-                            <label htmlFor="resName">Full Name</label>
-                            <input type="text" id="resName" required />
+                            {currentUser && (
+                                <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <span style={{ fontSize: '1.2rem' }}>👤</span>
+                                    <div>
+                                        <div style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Reserving As</div>
+                                        <div style={{ fontSize: '1rem', fontWeight: '600', color: '#1e3a8a' }}>{currentUser.name || currentUser.username}</div>
+                                    </div>
+                                </div>
+                            )}
 
-                            <label htmlFor="resStudentId">Student ID (Format: 24/BSE/BU/R/0008/YEAR/COURSE/3 LETTERS/BU/0001-1000)</label>
-                            <input type="text" id="resStudentId" placeholder="e.g. 24/BSE/BU/R/0008/2024/BSE/ABC/BU/0001" required />
-                            <small style={{fontSize: '0.75rem', color: '#64748b', marginTop: '5px', display: 'block'}}>
-                                BSE = Bachelor in Software Engineering | R = Regular Student
+                            <label htmlFor="resStudentRegNo">Student Registration Number</label>
+                            <input type="text" id="resStudentRegNo" placeholder="e.g. 24/BSE/BU/R/0008" required />
+                            <small style={{fontSize: '0.75rem', color: '#64748b', marginTop: '5px', display: 'block', marginBottom: '1rem'}}>
+                                Format: YY/COURSE/BU/R/XXXX (e.g., 24/BSE/BU/R/0008) where the last part is a 4-digit number.
                             </small>
 
                             <label htmlFor="resGender">Gender</label>
@@ -324,6 +397,9 @@ const Hostels = () => {
                                 <option value="male">Male</option>
                                 <option value="female">Female</option>
                             </select>
+
+                            <label htmlFor="resBookingDate">Booking Date</label>
+                            <input type="date" id="resBookingDate" required style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '1rem' }} />
 
                             <label htmlFor="resRoomNumber">Room Number</label>
                             <select id="resRoomNumber" required>
@@ -364,21 +440,33 @@ const Hostels = () => {
                                 <label htmlFor="paymentMethod">Payment Method</label>
                                 <select id="paymentMethod" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)} required>
                                     <option value="">Select Method</option>
-                                    <option value="mobile_money">Mobile Money (Direct Prompt)</option>
+                                    <option value="mobile_money">Mobile Money (Caretaker Line)</option>
                                     <option value="bank_transfer">Bank Transfer</option>
                                     <option value="upload_receipt">I have already paid (Upload Receipt)</option>
                                 </select>
 
                                 {paymentMethod === 'mobile_money' && (
-                                    <div style={{marginTop: '1rem'}}>
-                                        <label htmlFor="mmNumber">Mobile Money Number</label>
-                                        <input type="tel" id="mmNumber" placeholder="e.g. 0772123456" />
-                                        <p style={{fontSize: '0.85rem', color: '#64748b', marginTop: '0.5rem', lineHeight: '1.4'}}>Enter your number and click Confirm. You will receive a prompt on your phone to enter your PIN and complete the deposit.</p>
+                                    <div style={{marginTop: '1rem', background: '#f8fafc', padding: '1rem', borderLeft: '4px solid #10b981', borderRadius: '4px', border: '1px solid #e2e8f0', marginBottom: '1rem'}}>
+                                        <h4 style={{marginBottom: '0.5rem', color: '#065f46', fontSize: '0.95rem'}}>Caretaker Mobile Money Number</h4>
+                                        <p style={{fontSize: '0.9rem', marginBottom: '0.8rem'}}>
+                                            Please send the money to the caretaker's number:
+                                            <strong style={{color: '#047857', marginLeft: '5px', fontSize: '1.05rem'}}>{selectedHostel.caretaker_phone || '0769559707'}</strong>
+                                        </p>
+                                        
+                                        <label htmlFor="mmNumber" style={{display: 'block', marginBottom: '0.25rem'}}>Your Mobile Money Number</label>
+                                        <input type="tel" id="mmNumber" placeholder="e.g. 0772123456" required style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '1rem' }} />
+                                        
+                                        <label htmlFor="transactionId" style={{display: 'block', marginBottom: '0.25rem'}}>Transaction ID</label>
+                                        <input type="text" id="transactionId" placeholder="Enter Transaction ID (e.g. PP240622...)" required style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '0.5rem' }} />
+                                        
+                                        <p style={{fontSize: '0.8rem', color: '#64748b', lineHeight: '1.4', margin: 0}}>
+                                            After sending the money, copy the transaction ID from the MM receipt/SMS and paste it above.
+                                        </p>
                                     </div>
                                 )}
 
                                 {paymentMethod === 'bank_transfer' && (
-                                    <div style={{marginTop: '1rem', background: '#ffffff', padding: '1rem', borderLeft: '4px solid #3b82f6', borderRadius: '4px', border: '1px solid #e2e8f0'}}>
+                                    <div style={{marginTop: '1rem', background: '#ffffff', padding: '1rem', borderLeft: '4px solid #3b82f6', borderRadius: '4px', border: '1px solid #e2e8f0', marginBottom: '1rem'}}>
                                         <h4 style={{marginBottom: '0.5rem', color: '#1e3a8a', fontSize: '0.95rem'}}>University Bank Details</h4>
                                         <p style={{fontSize: '0.9rem', marginBottom: '0.2rem'}}><strong>Bank:</strong> Centenary Bank</p>
                                         <p style={{fontSize: '0.9rem', marginBottom: '0.2rem'}}><strong>Account Name:</strong> Bugema University Hostels</p>
@@ -388,7 +476,7 @@ const Hostels = () => {
                                 )}
 
                                 {paymentMethod === 'upload_receipt' && (
-                                    <div style={{marginTop: '1rem'}}>
+                                    <div style={{marginTop: '1rem', marginBottom: '1rem'}}>
                                         <label htmlFor="receiptUpload">Upload Receipt (PDF/Image)</label>
                                         <input type="file" id="receiptUpload" accept=".pdf, image/*" required />
                                     </div>
@@ -397,6 +485,64 @@ const Hostels = () => {
 
                             <button type="submit" className="primary-btn">Confirm Reservation</button>
                         </form>
+                    </div>
+                </div>
+            )}
+            {/* Room Details Modal */}
+            {roomDetailsModal && selectedRoomDetails && (
+                <div className="modal show" style={{display: 'block', backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1050}}>
+                    <div className="modal-content" style={{maxWidth: '500px'}}>
+                        <span className="close-modal" onClick={() => setRoomDetailsModal(false)}>&times;</span>
+                        <h2>Room {selectedRoomDetails.room_number} Details</h2>
+                        <div style={{marginTop: '1rem'}}>
+                            {selectedRoomDetails.image && !selectedRoomDetails.image.includes('placeholder.jpg') ? (
+                                <img src={selectedRoomDetails.image} alt="Room" style={{width: '100%', height: '250px', objectFit: 'cover', borderRadius: '8px', marginBottom: '1rem'}} />
+                            ) : (
+                                <div style={{width: '100%', height: '250px', background: '#e2e8f0', borderRadius: '8px', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '1.2rem'}}>
+                                    No Image Available
+                                </div>
+                            )}
+                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                                <div>
+                                    <h4 style={{color: '#475569', marginBottom: '0.25rem'}}>Room Type</h4>
+                                    <p style={{fontWeight: '600'}}>{selectedRoomDetails.room_type}</p>
+                                </div>
+                                <div>
+                                    <h4 style={{color: '#475569', marginBottom: '0.25rem'}}>Capacity</h4>
+                                    <p style={{fontWeight: '600'}}>{selectedRoomDetails.capacity} People</p>
+                                </div>
+                                <div style={{gridColumn: '1 / -1'}}>
+                                    <h4 style={{color: '#475569', marginBottom: '0.25rem'}}>Facilities</h4>
+                                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '0.5rem'}}>
+                                        {selectedRoomDetails.facilities ? selectedRoomDetails.facilities.split(',').map((fac, idx) => (
+                                            <span key={idx} style={{background: '#f1f5f9', padding: '0.25rem 0.75rem', borderRadius: '16px', fontSize: '0.85rem', color: '#334155'}}>
+                                                {fac.trim()}
+                                            </span>
+                                        )) : 'None specified'}
+                                    </div>
+                                </div>
+                                <div style={{gridColumn: '1 / -1', marginTop: '0.5rem'}}>
+                                    <h4 style={{color: '#475569', marginBottom: '0.25rem'}}>Status</h4>
+                                    <p style={{fontWeight: '600', color: selectedRoomDetails.is_available ? '#10b981' : '#ef4444'}}>
+                                        {selectedRoomDetails.is_available ? 'Available for Booking' : 'Currently Occupied'}
+                                    </p>
+                                </div>
+                            </div>
+                            <div style={{marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end'}}>
+                                <button className="h-btn-outline" onClick={() => setRoomDetailsModal(false)}>Close</button>
+                                {selectedRoomDetails.is_available && (
+                                    <button 
+                                        className="h-btn-solid" 
+                                        onClick={() => {
+                                            setRoomDetailsModal(false);
+                                            handleSelectRoom(selectedHostel, selectedRoomDetails.room_number);
+                                        }}
+                                    >
+                                        Select this Room
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

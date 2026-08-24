@@ -1,14 +1,17 @@
 from rest_framework import viewsets, status, permissions
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action, api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import login, logout
 from django.utils import timezone
 from django.db import models
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 from .models import User, UserProfile, LoginActivity
 from .serializers import (
     UserSerializer, UserRegistrationSerializer, UserLoginSerializer,
-    UserUpdateSerializer, PasswordChangeSerializer, LoginActivitySerializer
+    UserUpdateSerializer, PasswordChangeSerializer, LoginActivitySerializer,
+    CaretakerAdminCreateSerializer,
 )
 
 
@@ -80,6 +83,18 @@ class UserViewSet(viewsets.ModelViewSet):
         except Token.DoesNotExist:
             return Response({'message': 'Logged out successfully'})
 
+    @action(detail=False, methods=['post'], url_path='caretakers')
+    def create_caretaker(self, request):
+        if not request.user.is_authenticated:
+            return Response({'detail': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+        if request.user.role != 'admin':
+            return Response({'detail': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+        serializer = CaretakerAdminCreateSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     @action(detail=False, methods=['get'])
     def stats(self, request):
         """Get user statistics"""
@@ -99,7 +114,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 @api_view(['POST'])
+@authentication_classes([])
 @permission_classes([permissions.AllowAny])
+@csrf_exempt
 def login_view(request):
     """Custom login view"""
     serializer = UserLoginSerializer(data=request.data, context={'request': request})
@@ -129,7 +146,7 @@ def login_view(request):
         })
     
     # Record failed login attempt
-    name = request.data.get('name', '')
+    name = (request.data.get('name') or request.data.get('username') or '').strip()
     
     try:
         # Try to find user by name for failed login tracking
@@ -187,7 +204,9 @@ def current_user(request):
 
 
 @api_view(['POST'])
+@authentication_classes([])
 @permission_classes([permissions.AllowAny])
+@csrf_exempt
 def register_view(request):
     """User registration view"""
     serializer = UserRegistrationSerializer(data=request.data)

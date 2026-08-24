@@ -26,26 +26,60 @@ a {
 
 /* Header Styling */
 .main-header {
-    background-color: #1e3a8a; /* Dark blue matching footer */
-    padding: 2rem 2rem;
+    background: linear-gradient(135deg, rgba(30, 58, 138, 0.95) 0%, rgba(30, 64, 175, 0.95) 100%);
+    padding: 1rem 2rem;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 1.5rem;
+    justify-content: space-between;
+    gap: 2rem;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+.main-header.scrolled {
+    background: rgba(30, 58, 138, 0.98);
+    padding: 0.75rem 2rem;
+    box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.2);
+}
+
+.header-logo-section {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }
 
 .header-logo img {
-    height: 90px; /* Increased logo size */
+    height: 60px;
+    width: auto;
+}
+
+.header-text {
+    display: flex;
+    flex-direction: column;
 }
 
 .header-title {
     color: #ffffff;
     font-family: 'Georgia', serif;
-    font-size: 3rem; /* Giant text matching screenshot */
+    font-size: 1.5rem;
     font-weight: 700;
     margin: 0;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+}
+
+.header-subtitle {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.85rem;
+    font-weight: 400;
+    margin: 0;
     letter-spacing: 1px;
+    font-style: italic;
 }
 
 .center-nav {
@@ -111,11 +145,34 @@ a {
     background-color: #f3f4f6;
 }
 
+.nav-btn-glow {
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+    animation: glow 2s ease-in-out infinite alternate;
+}
+
+.nav-btn-glow:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+    box-shadow: 0 0 25px rgba(59, 130, 246, 0.8);
+    transform: translateY(-2px);
+}
+
+@keyframes glow {
+    from {
+        box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+    }
+    to {
+        box-shadow: 0 0 25px rgba(59, 130, 246, 0.8);
+    }
+}
+
 /* Main Content Area */
 main {
     flex: 1;
     width: 100%;
     background-color: #f0f7ff;
+    padding-top: 120px; /* Space for fixed navbar */
 }
 
 .page-section {

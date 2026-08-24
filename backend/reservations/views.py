@@ -2,8 +2,12 @@ from rest_framework import viewsets, status, permissions, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
-from django.db.models import Q
+from django.db.models import Q, Sum
+from django.utils import timezone
+from django.contrib.auth import get_user_model
 from .models import Reservation, Payment, Inquiry, WaitingList
+
+User = get_user_model()
 from .serializers import (
     ReservationSerializer, ReservationCreateSerializer, PaymentSerializer,
     InquirySerializer, InquiryCreateSerializer, WaitingListSerializer
@@ -123,7 +127,7 @@ class ReservationViewSet(viewsets.ModelViewSet):
             
             # Update reservation payment status
             total_paid = reservation.payments.filter(status='completed').aggregate(
-                total=models.Sum('amount')
+                total=Sum('amount')
             )['total'] or 0
             
             reservation.amount_paid = total_paid

@@ -19,7 +19,7 @@ class User(AbstractUser):
     country_code = models.CharField(max_length=10, default='+256')
     email = models.EmailField(unique=True)
     gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True, null=True)
-    student_id = models.CharField(max_length=50, blank=True, null=True)
+    student_reg_no = models.CharField(max_length=50, blank=True, null=True)
     program_of_study = models.CharField(max_length=200, blank=True, null=True)
     year_of_study = models.PositiveIntegerField(blank=True, null=True)
     next_of_kin_name = models.CharField(max_length=200, blank=True)

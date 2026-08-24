@@ -30,7 +30,7 @@ class ReservationSerializer(serializers.ModelSerializer):
             'room_number', 'reservation_code', 'status', 'payment_status',
             'payment_method', 'amount_paid', 'total_amount', 'balance_due',
             'is_fully_paid', 'semester', 'academic_year', 'check_in_date',
-            'check_out_date', 'special_requests', 'notes', 'receipt_image',
+            'check_out_date', 'booking_date', 'transaction_id', 'special_requests', 'notes', 'receipt_image',
             'payments', 'is_active', 'created_at', 'updated_at',
             'confirmed_at', 'cancelled_at'
         ]
@@ -57,7 +57,7 @@ class ReservationCreateSerializer(serializers.ModelSerializer):
         model = Reservation
         fields = [
             'hostel', 'room', 'payment_method', 'total_amount', 'semester',
-            'academic_year', 'check_in_date', 'check_out_date',
+            'academic_year', 'check_in_date', 'check_out_date', 'booking_date', 'transaction_id',
             'special_requests', 'notes', 'receipt_image'
         ]
 

@@ -39,6 +39,8 @@ class Reservation(models.Model):
     academic_year = models.CharField(max_length=20)  # e.g., "2024-2025"
     check_in_date = models.DateField()
     check_out_date = models.DateField()
+    booking_date = models.DateField(blank=True, null=True)
+    transaction_id = models.CharField(max_length=100, blank=True, default='')
     special_requests = models.TextField(blank=True)
     notes = models.TextField(blank=True)
     receipt_image = models.ImageField(upload_to='receipts/', blank=True, null=True)

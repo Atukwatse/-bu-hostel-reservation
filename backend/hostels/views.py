@@ -36,7 +36,7 @@ class HostelViewSet(viewsets.ModelViewSet):
         """Get all rooms for a specific hostel"""
         hostel = self.get_object()
         rooms = hostel.rooms.filter(is_available=True)
-        serializer = RoomSerializer(rooms, many=True)
+        serializer = RoomSerializer(rooms, many=True, context={'request': request})
         return Response(serializer.data)
 
     @action(detail=True, methods=['get'])
@@ -69,7 +69,7 @@ class HostelViewSet(viewsets.ModelViewSet):
         """Get all images for a specific hostel"""
         hostel = self.get_object()
         images = hostel.images.all()
-        serializer = HostelImageSerializer(images, many=True)
+        serializer = HostelImageSerializer(images, many=True, context={'request': request})
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
@@ -149,6 +149,13 @@ class RoomViewSet(viewsets.ModelViewSet):
     search_fields = ['room_number', 'hostel__name', 'facilities']
     ordering_fields = ['room_number', 'price_per_semester', 'capacity']
     ordering = ['room_number']
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            self.permission_classes = [AllowAny]
+        else:
+            self.permission_classes = [IsAuthenticated]
+        return super().get_permissions()
 
     @action(detail=True, methods=['get'])
     def hostel_info(self, request, pk=None):
