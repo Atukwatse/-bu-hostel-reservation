@@ -158,8 +158,9 @@ const Hostels = () => {
 
     const startMtnStatusPolling = (reference) => {
         if (mtnPollRef.current) clearInterval(mtnPollRef.current);
-        const startedAt = Date.now();
+        let ticks = 0;
         mtnPollRef.current = setInterval(async () => {
+            ticks += 1;
             try {
                 const data = await api.get(API_CONFIG.RESERVATIONS.MTN_PAYMENT_STATUS, { reference });
                 if (data.status === 'SUCCESSFUL') {
@@ -176,10 +177,11 @@ const Hostels = () => {
                     setMmPhase('failed');
                     return;
                 }
-            } catch (error) {
+            } catch {
                 // Transient network error: keep polling until the timeout below kicks in
             }
-            if (Date.now() - startedAt > 100000 && mtnPollRef.current) {
+            // ~100 seconds without confirmation gives up (40 polls x 2.5s)
+            if (ticks > 40 && mtnPollRef.current) {
                 clearInterval(mtnPollRef.current);
                 mtnPollRef.current = null;
                 setMmPhase('failed');
