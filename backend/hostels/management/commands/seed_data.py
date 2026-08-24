@@ -16,6 +16,9 @@ class Command(BaseCommand):
         # Create admin user
         self.create_admin_user()
         
+        # Create caretakers
+        self.create_caretakers()
+        
         # Create hostels
         self.create_hostels()
         
@@ -45,6 +48,31 @@ class Command(BaseCommand):
             )
             self.stdout.write('Created admin user')
 
+    def create_caretakers(self):
+        """Create caretaker users for the hostels"""
+        caretakers_data = [
+            {'username': 'caretaker1', 'first_name': 'Jane', 'last_name': 'Doe', 'phone': '256769559707', 'email': 'jane@buhostel.com'},
+            {'username': 'caretaker2', 'first_name': 'John', 'last_name': 'Smith', 'phone': '256744895697', 'email': 'john@buhostel.com'},
+            {'username': 'caretaker3', 'first_name': 'Mary', 'last_name': 'Johnson', 'phone': '256772345678', 'email': 'mary@buhostel.com'},
+            {'username': 'caretaker4', 'first_name': 'Sarah', 'last_name': 'Williams', 'phone': '256798765432', 'email': 'sarah@buhostel.com'},
+            {'username': 'caretaker5', 'first_name': 'Peter', 'last_name': 'Brown', 'phone': '256765432109', 'email': 'peter@buhostel.com'},
+            {'username': 'caretaker6', 'first_name': 'David', 'last_name': 'Jones', 'phone': '256734567890', 'email': 'david@buhostel.com'},
+        ]
+        for c in caretakers_data:
+            if not User.objects.filter(phone=c['phone']).exists():
+                User.objects.create_user(
+                    username=c['username'],
+                    email=c['email'],
+                    phone=c['phone'],
+                    country_code='+256',
+                    password='Caretaker@2026!',
+                    first_name=c['first_name'],
+                    last_name=c['last_name'],
+                    role='caretaker',
+                    is_verified=True
+                )
+                self.stdout.write(f"Created caretaker: {c['first_name']} {c['last_name']}")
+
     def create_hostels(self):
         """Create initial hostels"""
         hostels_data = [
@@ -60,7 +88,8 @@ class Command(BaseCommand):
                 'rooms_status': 'Available',
                 'description': 'A comfortable and secure female hostel located within the university premises.',
                 'facilities': 'Wi-Fi, Laundry, Study Room, Security, Kitchen, Common Room',
-                'location': 'Bugema University Main Campus'
+                'location': 'Bugema University Main Campus',
+                'image': '/IMAGES/bensdorf.png'
             },
             {
                 'name': 'SL Hostel',
@@ -74,7 +103,8 @@ class Command(BaseCommand):
                 'rooms_status': 'Available',
                 'description': 'Modern male hostel with excellent facilities and 24/7 security.',
                 'facilities': 'Wi-Fi, Gym, Study Room, Security, Kitchen, Sports Ground',
-                'location': 'Bugema University Main Campus'
+                'location': 'Bugema University Main Campus',
+                'image': '/IMAGES/sl.png'
             },
             {
                 'name': 'Seattle Hostel',
@@ -88,7 +118,8 @@ class Command(BaseCommand):
                 'rooms_status': 'Full',
                 'description': 'Affordable male hostel with basic amenities.',
                 'facilities': 'Wi-Fi, Security, Common Room, Kitchen',
-                'location': 'Bugema University Main Campus'
+                'location': 'Bugema University Main Campus',
+                'image': '/IMAGES/seatle.png'
             },
             {
                 'name': 'Clifford Hostel',
@@ -102,7 +133,8 @@ class Command(BaseCommand):
                 'rooms_status': 'Available',
                 'description': 'Premium female hostel with modern facilities and excellent security.',
                 'facilities': 'Wi-Fi, Laundry, Study Room, Security, Kitchen, Common Room, Gym',
-                'location': 'Bugema University Main Campus'
+                'location': 'Bugema University Main Campus',
+                'image': '/IMAGES/clifford.png'
             },
             {
                 'name': 'Cityview Hostel',
@@ -116,7 +148,8 @@ class Command(BaseCommand):
                 'rooms_status': 'Available',
                 'description': 'Private male hostel with city views and modern amenities.',
                 'facilities': 'Wi-Fi, Laundry, Study Room, Security, Kitchen, Balcony',
-                'location': 'Near Bugema University'
+                'location': 'Near Bugema University',
+                'image': '/IMAGES/cityview.png'
             },
             {
                 'name': 'Rose Hostel',
@@ -130,7 +163,8 @@ class Command(BaseCommand):
                 'rooms_status': 'Available',
                 'description': 'Affordable private female hostel with homely atmosphere.',
                 'facilities': 'Wi-Fi, Laundry, Security, Kitchen, Common Room',
-                'location': 'Near Bugema University'
+                'location': 'Near Bugema University',
+                'image': '/IMAGES/rose.png'
             },
             {
                 'name': 'Endeavor Hostel',
@@ -144,7 +178,8 @@ class Command(BaseCommand):
                 'rooms_status': 'Available',
                 'description': 'Mixed hostel with separate wings for male and female students.',
                 'facilities': 'Wi-Fi, Laundry, Study Room, Security, Kitchen, Common Room, Sports',
-                'location': 'Near Bugema University'
+                'location': 'Near Bugema University',
+                'image': '/IMAGES/endvor.png'
             },
             {
                 'name': 'Kernmol Hostel',
@@ -158,17 +193,20 @@ class Command(BaseCommand):
                 'rooms_status': 'Available',
                 'description': 'Budget-friendly private male hostel with essential facilities.',
                 'facilities': 'Wi-Fi, Security, Common Room, Kitchen',
-                'location': 'Near Bugema University'
+                'location': 'Near Bugema University',
+                'image': '/IMAGES/kenmor.png'
             }
         ]
 
         for hostel_data in hostels_data:
-            hostel, created = Hostel.objects.get_or_create(
+            hostel, created = Hostel.objects.update_or_create(
                 name=hostel_data['name'],
                 defaults=hostel_data
             )
             if created:
                 self.stdout.write(f'Created hostel: {hostel.name}')
+            else:
+                self.stdout.write(f'Updated hostel: {hostel.name}')
 
     def create_rooms(self):
         """Create rooms for each hostel"""
