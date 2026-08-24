@@ -60,7 +60,8 @@ const AdminDashboard = () => {
                 ...res,
                 student: res.user_name || displayUserName(res.user) || 'Unknown',
                 hostel: res.hostel_name || res.hostel?.name || 'Unknown',
-                date: res.created_at?.split('T')[0] || new Date().toISOString().split('T')[0]
+                date: res.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+                lastUpdated: res.updated_at || res.created_at || ''
             })));
 
             setStats({
@@ -367,6 +368,20 @@ const AdminDashboard = () => {
         return match ? match[1].trim() : null;
     };
 
+    const getActivityLabel = (reservation) => {
+        switch (reservation.status) {
+            case 'cancelled': return { label: 'Booking Cancelled', color: '#ef4444' };
+            case 'confirmed': return { label: 'Reservation Confirmed', color: '#10b981' };
+            case 'completed': return { label: 'Stay Completed', color: '#3b82f6' };
+            case 'expired': return { label: 'Reservation Expired', color: '#f59e0b' };
+            default: return { label: 'Room Reservation', color: '#334155' };
+        }
+    };
+
+    const recentActivity = [...reservations]
+        .sort((a, b) => new Date(b.lastUpdated || b.date || 0) - new Date(a.lastUpdated || a.date || 0))
+        .slice(0, 5);
+
     const renderTabContent = () => {
         let adminWelcome = 'Admin';
         try {
@@ -417,14 +432,21 @@ const AdminDashboard = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {reservations.slice(0, 5).map(reservation => (
-                                    <tr key={reservation.id}>
-                                        <td>Room Reservation</td>
-                                        <td>{reservation.student}</td>
-                                        <td>{reservation.hostel}</td>
-                                        <td>{reservation.date}</td>
-                                    </tr>
-                                ))}
+                                {recentActivity.map(reservation => {
+                                    const activity = getActivityLabel(reservation);
+                                    return (
+                                        <tr key={reservation.id}>
+                                            <td>
+                                                <span style={{ color: activity.color, fontWeight: reservation.status === 'cancelled' ? 600 : 400 }}>
+                                                    {activity.label}
+                                                </span>
+                                            </td>
+                                            <td>{reservation.student}</td>
+                                            <td>{reservation.hostel}</td>
+                                            <td>{(reservation.lastUpdated || reservation.date || '').split('T')[0]}</td>
+                                        </tr>
+                                    );
+                                })}
                                 {reservations.length === 0 && (
                                     <tr>
                                         <td colSpan="4" className="text-center" style={{color:'#64748b', textAlign: 'center'}}>No activity yet</td>
@@ -523,9 +545,12 @@ const AdminDashboard = () => {
                         </thead>
                         <tbody>
                             {users.filter(u => displayUserName(u).toLowerCase().includes(studentSearchTerm.toLowerCase())).map(u => {
-                                // Find student's reservation to get booked hostel
-                                const studentReservation = reservations.find(r => r.user === u.id);
-                                const bookedHostel = studentReservation ? studentReservation.hostel : 'None';
+                                // Find student's active reservation to get booked hostel
+                                // Cancelled / expired / completed bookings do not count as a booked hostel
+                                const studentReservation = reservations.find(r =>
+                                    r.user === u.id && ['pending', 'confirmed'].includes(r.status)
+                                );
+                                const bookedHostel = studentReservation ? studentReservation.hostel : 'No hostel booked';
                                 
                                 return (
                                     <tr key={u.id}>
@@ -536,7 +561,13 @@ const AdminDashboard = () => {
                                         <td>{u.program_of_study}</td>
                                         <td>{u.next_of_kin_name || 'N/A'}</td>
                                         <td>{u.next_of_kin_country_code || '+256'} {u.next_of_kin_phone || 'N/A'}</td>
-                                        <td>{bookedHostel}</td>
+                                        <td>
+                                            {studentReservation ? (
+                                                bookedHostel
+                                            ) : (
+                                                <span style={{ color: '#ef4444', fontStyle: 'italic' }}>No hostel booked</span>
+                                            )}
+                                        </td>
                                     </tr>
                                 );
                             })}

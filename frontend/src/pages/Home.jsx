@@ -23,10 +23,15 @@ const Home = () => {
             // Fetch student's reservations
             const reservationsRes = await api.get(API_CONFIG.RESERVATIONS.LIST);
             const allReservations = reservationsRes.results || reservationsRes;
-            const myReservation = allReservations.find(r => r.user === user.id);
-            
+            const ACTIVE_STATUSES = ['pending', 'confirmed'];
+            const myReservation = allReservations.find(
+                r => r.user === user.id && ACTIVE_STATUSES.includes(r.status)
+            );
+
             if (myReservation) {
                 setStudentReservation(myReservation);
+            } else {
+                setStudentReservation(null);
             }
         } catch (error) {
             console.error('Error fetching student info:', error);
@@ -138,11 +143,45 @@ const Home = () => {
                                             >
                                                 📞 Call Next of Kin
                                             </a>
+                                            <button
+                                                onClick={() => navigate('/profile')}
+                                                style={{
+                                                    display: 'inline-block',
+                                                    marginTop: '0.5rem',
+                                                    marginLeft: '0.5rem',
+                                                    padding: '0.5rem 1rem',
+                                                    background: '#f1f5f9',
+                                                    color: '#1e3a8a',
+                                                    border: '1px solid #cbd5e1',
+                                                    cursor: 'pointer',
+                                                    borderRadius: '4px',
+                                                    fontSize: '0.9rem'
+                                                }}
+                                            >
+                                                ✏️ Edit
+                                            </button>
                                         </div>
                                     ) : (
-                                        <p style={{ color: '#64748b', fontStyle: 'italic' }}>
-                                            No next of kin information provided. Please update your profile to add emergency contact information.
-                                        </p>
+                                        <div>
+                                            <p style={{ color: '#64748b', fontStyle: 'italic' }}>
+                                                No next of kin information provided. Please update your profile to add emergency contact information.
+                                            </p>
+                                            <button
+                                                onClick={() => navigate('/profile')}
+                                                style={{
+                                                    marginTop: '0.75rem',
+                                                    padding: '0.5rem 1rem',
+                                                    background: '#1e3a8a',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    borderRadius: '4px',
+                                                    fontSize: '0.9rem'
+                                                }}
+                                            >
+                                                ➕ Add Next of Kin
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
                             </div>

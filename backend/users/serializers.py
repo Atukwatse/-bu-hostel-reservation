@@ -89,26 +89,36 @@ class UserLoginSerializer(serializers.Serializer):
         if not login_id or not password:
             raise serializers.ValidationError('Must include name or username and password.')
 
-        user = User.objects.filter(email__iexact=login_id).first()
+        def lookup(qs):
+            user = qs.filter(email__iexact=login_id).first()
+            if not user:
+                user = qs.filter(username__iexact=login_id).first()
+            if not user:
+                parts = login_id.split()
+                if len(parts) >= 2:
+                    user = qs.filter(
+                        first_name__iexact=parts[0],
+                        last_name__iexact=' '.join(parts[1:])
+                    ).first()
+                elif len(parts) == 1:
+                    user = qs.filter(first_name__iexact=parts[0]).first()
+                    if not user:
+                        user = qs.filter(username__icontains=login_id).first()
+            return user
+
+        # Prefer an account matching the selected role (names may be shared
+        # across roles, e.g. a caretaker and a student with the same name).
+        user = lookup(User.objects.filter(role=role))
         if not user:
-            user = User.objects.filter(username__iexact=login_id).first()
-        if not user:
-            parts = login_id.split()
-            if len(parts) >= 2:
-                user = User.objects.filter(
-                    first_name__iexact=parts[0],
-                    last_name__iexact=' '.join(parts[1:])
-                ).first()
-            elif len(parts) == 1:
-                user = User.objects.filter(first_name__iexact=parts[0]).first()
-                if not user:
-                    user = User.objects.filter(username__icontains=login_id).first()
+            user = lookup(User.objects.all())
 
         if not user or not user.check_password(password):
             raise serializers.ValidationError('Invalid credentials.')
 
         if user.role != role:
-            raise serializers.ValidationError(f'Invalid credentials for {role} role.')
+            raise serializers.ValidationError(
+                f'These credentials belong to a {user.role} account, not a {role} account.'
+            )
 
         if not user.is_active:
             raise serializers.ValidationError('User account is disabled.')

@@ -5,9 +5,52 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Sum
 from django.utils import timezone
 from django.contrib.auth import get_user_model
+import re
+import time
+import random
+import string
+import uuid
 from .models import Reservation, Payment, Inquiry, WaitingList
+from .emails import send_cancellation_email
+from .mobile_money import parse_mobile_money_message
 
 User = get_user_model()
+
+
+# ---------------------------------------------------------------------------
+# Simulated MTN Mobile Money payment gateway
+# Mirrors the real MTN MoMo Collection API flow: a payment request ("prompt")
+# is pushed to the payer's phone, the payer approves it with their PIN, and
+# MTN returns a transaction ID which we hand back to the frontend.
+# ---------------------------------------------------------------------------
+
+MTN_PENDING_PAYMENTS = {}
+MTN_PHONE_RE = re.compile(r'^0\d{9}$')
+MTN_APPROVAL_TIMEOUT_SECONDS = 90
+
+
+def _normalize_mtn_phone(raw):
+    """Normalize a Ugandan phone number to local format 07XXXXXXXX."""
+    phone = re.sub(r'[\s\-()]', '', str(raw or ''))
+    if phone.startswith('+'):
+        phone = phone[1:]
+    if phone.startswith('256') and len(phone) == 12:
+        phone = '0' + phone[3:]
+    elif len(phone) == 9 and phone.startswith('7'):
+        phone = '0' + phone
+    return phone
+
+
+def _mask_phone(phone):
+    return f'{phone[:4]} *** {phone[-3:]}'
+
+
+def _generate_mtn_transaction_id():
+    """Generate a transaction ID in the real MTN MoMo format, e.g. MP240622.1430.A67890"""
+    now = timezone.localtime()
+    letter = random.choice(string.ascii_uppercase)
+    digits = ''.join(random.choices(string.digits, k=5))
+    return f'MP{now:%y%m%d}.{now:%H%M}.{letter}{digits}'
 from .serializers import (
     ReservationSerializer, ReservationCreateSerializer, PaymentSerializer,
     InquirySerializer, InquiryCreateSerializer, WaitingListSerializer
@@ -44,6 +87,109 @@ class ReservationViewSet(viewsets.ModelViewSet):
         
         serializer = self.get_serializer(reservations, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['post'])
+    def parse_mobile_money(self, request):
+        """Parse a pasted mobile money SMS and return structured payment details"""
+        message = request.data.get('message', '')
+        if not message or not str(message).strip():
+            return Response(
+                {'error': 'A mobile money message is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        result = parse_mobile_money_message(message)
+        if not result:
+            return Response(
+                {'error': 'Could not parse the message. Please enter the details manually.'},
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY
+            )
+
+        if not result.get('transaction_id') and not result.get('amount'):
+            return Response(
+                {
+                    'error': 'This does not look like a valid Mobile Money confirmation message. Please check and try again.',
+                    'parsed': result
+                },
+                status=status.HTTP_422_UNPROCESSABLE_ENTITY
+            )
+
+        return Response(result)
+
+    @action(detail=False, methods=['post'])
+    def initiate_mtn_payment(self, request):
+        """Push a payment request to the payer's phone (like the MTN MoMo prompt).
+
+        The user only supplies their number; no SMS is pasted anywhere.
+        Returns a reference the frontend polls until MTN confirms the payment.
+        """
+        phone = _normalize_mtn_phone(request.data.get('phone'))
+        if not MTN_PHONE_RE.fullmatch(phone):
+            return Response(
+                {'error': 'Enter a valid Ugandan mobile money number, e.g. 0772123456'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            amount = float(request.data.get('amount'))
+        except (TypeError, ValueError):
+            amount = 0
+        if amount <= 0:
+            return Response(
+                {'error': 'A valid payment amount is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        reference = f'BUMO{uuid.uuid4().hex.upper()[:12]}'
+        # Simulates how long the payer takes to enter their MoMo PIN
+        approval_delay = random.uniform(6, 12)
+        MTN_PENDING_PAYMENTS[reference] = {
+            'phone': phone,
+            'amount': amount,
+            'status': 'PENDING',
+            'initiated_at': time.time(),
+            'approve_after': time.time() + approval_delay,
+            'transaction_id': None,
+            'completed_at': None,
+        }
+
+        return Response({
+            'reference': reference,
+            'status': 'PENDING',
+            'provider': 'MTN MoMo',
+            'message': (
+                f'A payment request of UGX {int(amount):,} has been sent to '
+                f'{_mask_phone(phone)}. Enter your MTN MoMo PIN to approve it.'
+            ),
+        })
+
+    @action(detail=False, methods=['get'])
+    def mtn_payment_status(self, request):
+        """Poll the simulated gateway: PENDING -> SUCCESSFUL with an auto-generated transaction ID."""
+        reference = request.query_params.get('reference', '')
+        txn = MTN_PENDING_PAYMENTS.get(reference)
+        if not txn:
+            return Response({'error': 'Unknown payment reference'}, status=status.HTTP_404_NOT_FOUND)
+
+        if txn['status'] == 'PENDING':
+            if time.time() - txn['initiated_at'] > MTN_APPROVAL_TIMEOUT_SECONDS:
+                txn['status'] = 'EXPIRED'
+            elif time.time() >= txn['approve_after']:
+                txn['status'] = 'SUCCESSFUL'
+                txn['completed_at'] = timezone.now()
+                txn['transaction_id'] = _generate_mtn_transaction_id()
+
+        payload = {
+            'status': txn['status'],
+            'provider': 'MTN MoMo',
+            'phone': _mask_phone(txn['phone']),
+            'amount': txn['amount'],
+            'currency': 'UGX',
+        }
+        if txn['status'] == 'SUCCESSFUL':
+            payload['transaction_id'] = txn['transaction_id']
+            payload['datetime'] = timezone.localtime(txn['completed_at']).strftime('%Y-%m-%d %H:%M')
+        return Response(payload)
 
     @action(detail=True, methods=['post'])
     def confirm(self, request, pk=None):
@@ -109,14 +255,19 @@ class ReservationViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
+        was_confirmed = reservation.status == 'confirmed'
+        
         reservation.status = 'cancelled'
         reservation.cancelled_at = timezone.now()
         reservation.save()
         
         # Update room occupancy if room was assigned and reservation was confirmed
-        if reservation.room and reservation.status == 'confirmed':
+        if reservation.room and was_confirmed:
             reservation.room.current_occupancy = max(0, reservation.room.current_occupancy - 1)
             reservation.room.save()
+        
+        # Notify the student by email that their booking has been cancelled
+        send_cancellation_email(reservation)
         
         return Response({'message': 'Reservation cancelled successfully'})
 

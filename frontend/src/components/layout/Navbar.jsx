@@ -82,6 +82,15 @@ const Navbar = () => {
                                 </li>
                             )}
                             <li>
+                                <Link
+                                    to="/profile"
+                                    className={`nav-btn nav-btn-outline ${isActive('/profile') ? 'active' : ''}`}
+                                    title="View and update your profile"
+                                >
+                                    👤 My Profile
+                                </Link>
+                            </li>
+                            <li>
                                 <button onClick={handleLogout} className="nav-btn nav-btn-outline">Logout</button>
                             </li>
                         </>
