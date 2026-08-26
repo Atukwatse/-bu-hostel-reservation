@@ -23,10 +23,13 @@ const Home = () => {
             // Fetch student's reservations
             const reservationsRes = await api.get(API_CONFIG.RESERVATIONS.LIST);
             const allReservations = reservationsRes.results || reservationsRes;
+            
+            // Only pending or confirmed reservations count as active booked hostels
             const ACTIVE_STATUSES = ['pending', 'confirmed'];
-            const myReservation = allReservations.find(
-                r => r.user === user.id && ACTIVE_STATUSES.includes(r.status)
-            );
+            const myReservation = allReservations.find(r => {
+                const rUserId = (r.user && typeof r.user === 'object') ? r.user.id : r.user;
+                return Number(rUserId) === Number(user.id) && ACTIVE_STATUSES.includes(r.status);
+            });
 
             if (myReservation) {
                 setStudentReservation(myReservation);

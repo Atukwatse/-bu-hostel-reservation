@@ -10,23 +10,26 @@ import time
 import random
 import string
 import uuid
+import re
+import time
+import random
+import string
+import uuid
+import logging
 from .models import Reservation, Payment, Inquiry, WaitingList
 from .emails import send_cancellation_email
 from .mobile_money import parse_mobile_money_message
+from .sms import send_user_cancellation_notifications, send_caretaker_cancellation_notifications
+from .mtn_momo import request_to_pay, get_request_to_pay_status
 
+logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
-# ---------------------------------------------------------------------------
-# Simulated MTN Mobile Money payment gateway
-# Mirrors the real MTN MoMo Collection API flow: a payment request ("prompt")
-# is pushed to the payer's phone, the payer approves it with their PIN, and
-# MTN returns a transaction ID which we hand back to the frontend.
-# ---------------------------------------------------------------------------
+# ── Phone helpers ────────────────────────────────────────────────────────────
 
-MTN_PENDING_PAYMENTS = {}
 MTN_PHONE_RE = re.compile(r'^0\d{9}$')
-MTN_APPROVAL_TIMEOUT_SECONDS = 90
+MTN_APPROVAL_TIMEOUT_SECONDS = 120
 
 
 def _normalize_mtn_phone(raw):
@@ -45,12 +48,11 @@ def _mask_phone(phone):
     return f'{phone[:4]} *** {phone[-3:]}'
 
 
-def _generate_mtn_transaction_id():
-    """Generate a transaction ID in the real MTN MoMo format, e.g. MP240622.1430.A67890"""
-    now = timezone.localtime()
-    letter = random.choice(string.ascii_uppercase)
-    digits = ''.join(random.choices(string.digits, k=5))
-    return f'MP{now:%y%m%d}.{now:%H%M}.{letter}{digits}'
+def _phone_to_msisdn(phone):
+    """Convert local format 07XXXXXXXX to MSISDN 2567XXXXXXXX for MTN API."""
+    if phone.startswith('0') and len(phone) == 10:
+        return '256' + phone[1:]
+    return phone
 from .serializers import (
     ReservationSerializer, ReservationCreateSerializer, PaymentSerializer,
     InquirySerializer, InquiryCreateSerializer, WaitingListSerializer
@@ -118,10 +120,10 @@ class ReservationViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def initiate_mtn_payment(self, request):
-        """Push a payment request to the payer's phone (like the MTN MoMo prompt).
+        """Send a real MTN MoMo payment prompt to the payer's phone.
 
-        The user only supplies their number; no SMS is pasted anywhere.
-        Returns a reference the frontend polls until MTN confirms the payment.
+        Uses the MTN MoMo Collection API (Request to Pay).
+        The user gets a real prompt on their phone to enter their PIN.
         """
         phone = _normalize_mtn_phone(request.data.get('phone'))
         if not MTN_PHONE_RE.fullmatch(phone):
@@ -140,55 +142,80 @@ class ReservationViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        reference = f'BUMO{uuid.uuid4().hex.upper()[:12]}'
-        # Simulates how long the payer takes to enter their MoMo PIN
-        approval_delay = random.uniform(6, 12)
-        MTN_PENDING_PAYMENTS[reference] = {
-            'phone': phone,
-            'amount': amount,
-            'status': 'PENDING',
-            'initiated_at': time.time(),
-            'approve_after': time.time() + approval_delay,
-            'transaction_id': None,
-            'completed_at': None,
-        }
+        # Convert to MSISDN format for MTN API (2567XXXXXXXX)
+        msisdn = _phone_to_msisdn(phone)
+        external_id = f'BUMO{uuid.uuid4().hex.upper()[:12]}'
+
+        # Call the real MTN MoMo API
+        result = request_to_pay(
+            phone=msisdn,
+            amount=str(int(amount)),
+            external_id=external_id,
+            payer_message=f'Pay UGX {int(amount):,} for hostel booking',
+            payee_note=f'Hostel reservation {external_id}',
+        )
+
+        if 'error' in result:
+            logger.warning('[MTN] RequestToPay failed for %s: %s', phone, result['error'])
+            return Response(
+                {'error': f'Failed to send payment prompt: {result["error"]}'},
+                status=status.HTTP_502_BAD_GATEWAY
+            )
+
+        reference_id = result['reference_id']
 
         return Response({
-            'reference': reference,
+            'reference': reference_id,
             'status': 'PENDING',
             'provider': 'MTN MoMo',
             'message': (
                 f'A payment request of UGX {int(amount):,} has been sent to '
-                f'{_mask_phone(phone)}. Enter your MTN MoMo PIN to approve it.'
+                f'{_mask_phone(phone)}. Enter your MTN MoMo PIN on your phone to approve it.'
             ),
         })
 
     @action(detail=False, methods=['get'])
     def mtn_payment_status(self, request):
-        """Poll the simulated gateway: PENDING -> SUCCESSFUL with an auto-generated transaction ID."""
-        reference = request.query_params.get('reference', '')
-        txn = MTN_PENDING_PAYMENTS.get(reference)
-        if not txn:
-            return Response({'error': 'Unknown payment reference'}, status=status.HTTP_404_NOT_FOUND)
+        """Poll the real MTN MoMo API for payment status.
 
-        if txn['status'] == 'PENDING':
-            if time.time() - txn['initiated_at'] > MTN_APPROVAL_TIMEOUT_SECONDS:
-                txn['status'] = 'EXPIRED'
-            elif time.time() >= txn['approve_after']:
-                txn['status'] = 'SUCCESSFUL'
-                txn['completed_at'] = timezone.now()
-                txn['transaction_id'] = _generate_mtn_transaction_id()
+        Returns SUCCESSFUL once the user enters their PIN on the phone prompt,
+        FAILED if they reject it, or PENDING if they haven't responded yet.
+        """
+        reference = request.query_params.get('reference', '')
+        if not reference:
+            return Response({'error': 'Missing reference parameter'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Call the real MTN MoMo API to check status
+        result = get_request_to_pay_status(reference)
+
+        if 'error' in result:
+            return Response({'error': result['error']}, status=status.HTTP_502_BAD_GATEWAY)
+
+        mtn_status = result.get('status', 'UNKNOWN')
+
+        # Map MTN statuses to our frontend statuses
+        status_map = {
+            'SUCCESSFUL': 'SUCCESSFUL',
+            'FAILED': 'FAILED',
+            'REJECTED': 'FAILED',
+            'TIMEOUT': 'EXPIRED',
+            'PENDING': 'PENDING',
+        }
+        mapped_status = status_map.get(mtn_status, 'PENDING')
 
         payload = {
-            'status': txn['status'],
+            'status': mapped_status,
             'provider': 'MTN MoMo',
-            'phone': _mask_phone(txn['phone']),
-            'amount': txn['amount'],
-            'currency': 'UGX',
+            'currency': result.get('currency', 'UGX'),
         }
-        if txn['status'] == 'SUCCESSFUL':
-            payload['transaction_id'] = txn['transaction_id']
-            payload['datetime'] = timezone.localtime(txn['completed_at']).strftime('%Y-%m-%d %H:%M')
+
+        if mapped_status == 'SUCCESSFUL':
+            payload['transaction_id'] = result.get('financialTransactionId', reference)
+            payload['amount'] = result.get('amount')
+            payload['datetime'] = timezone.now().strftime('%Y-%m-%d %H:%M')
+        elif mapped_status in ('FAILED', 'EXPIRED'):
+            payload['reason'] = result.get('reason', 'Payment was not completed')
+
         return Response(payload)
 
     @action(detail=True, methods=['post'])
@@ -268,6 +295,12 @@ class ReservationViewSet(viewsets.ModelViewSet):
         
         # Notify the student by email that their booking has been cancelled
         send_cancellation_email(reservation)
+        
+        # Send SMS + WhatsApp to the student about cancellation and refund
+        send_user_cancellation_notifications(reservation)
+        
+        # Send SMS + WhatsApp to the caretaker about the cancellation and refund
+        send_caretaker_cancellation_notifications(reservation)
         
         return Response({'message': 'Reservation cancelled successfully'})
 

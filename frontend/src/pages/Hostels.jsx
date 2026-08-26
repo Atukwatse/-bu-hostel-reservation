@@ -392,16 +392,6 @@ const Hostels = () => {
                             }
                             
                             try {
-                                const regNoInput = document.getElementById('resStudentRegNo')?.value || '';
-                                const regNoClean = regNoInput.trim().toUpperCase();
-                                
-                                // Validate Reg No: YY/COURSE/BU/R/XXXX (4 digits)
-                                const regNoRegex = /^\d{2}\/[A-Za-z]+\/BU\/R\/\d{4}$/i;
-                                if (!regNoRegex.test(regNoClean)) {
-                                    alert('Invalid Student Registration Number format!\n\nIt must match: YY/COURSE/BU/R/XXXX\n- YY: Year (e.g., 24)\n- COURSE: Course code (e.g., BSE)\n- BU & R: Constants\n- XXXX: Exactly 4 digits (e.g., 0008)\n\nExample: 24/BSE/BU/R/0008');
-                                    return;
-                                }
-
                                 const isUpload = document.getElementById('paymentMethod')?.value === 'upload_receipt';
                                 let response;
 
@@ -412,7 +402,7 @@ const Hostels = () => {
 
                                 const priceString = selectedHostel.price || '0';
                                 const totalAmount = parseFloat(priceString.replace(/[^0-9.-]+/g,"")) || 0;
-                                let notesInfo = `Student Reg No: ${regNoClean}, Gender: ${document.getElementById('resGender')?.value}, Room Type: ${document.getElementById('resRoomType')?.value}, Room Number: ${document.getElementById('resRoomNumber')?.value || selectedRoom}`;
+                                let notesInfo = `Gender: ${document.getElementById('resGender')?.value}, Room Type: ${document.getElementById('resRoomType')?.value}, Room Number: ${document.getElementById('resRoomNumber')?.value || selectedRoom}`;
                                 if (paymentMethod === 'mobile_money' && mmResult) {
                                     notesInfo += `, MM Provider: ${mmResult.provider || 'MTN MoMo'}, MM Amount: ${mmResult.amount != null ? 'UGX ' + Number(mmResult.amount).toLocaleString() : 'N/A'}, Paid From: ${mmResult.phone || mmNumber}, MM Date: ${mmResult.datetime || 'N/A'}, Source: Auto-confirmed via MTN MoMo payment prompt`;
                                 }
@@ -479,12 +469,6 @@ const Hostels = () => {
                                     </div>
                                 </div>
                             )}
-
-                            <label htmlFor="resStudentRegNo">Student Registration Number</label>
-                            <input type="text" id="resStudentRegNo" placeholder="e.g. 24/BSE/BU/R/0008" required />
-                            <small style={{fontSize: '0.75rem', color: '#64748b', marginTop: '5px', display: 'block', marginBottom: '1rem'}}>
-                                Format: YY/COURSE/BU/R/XXXX (e.g., 24/BSE/BU/R/0008) where the last part is a 4-digit number.
-                            </small>
 
                             <label htmlFor="resGender">Gender</label>
                             <select id="resGender" required>

@@ -547,10 +547,11 @@ const AdminDashboard = () => {
                             {users.filter(u => displayUserName(u).toLowerCase().includes(studentSearchTerm.toLowerCase())).map(u => {
                                 // Find student's active reservation to get booked hostel
                                 // Cancelled / expired / completed bookings do not count as a booked hostel
-                                const studentReservation = reservations.find(r =>
-                                    r.user === u.id && ['pending', 'confirmed'].includes(r.status)
-                                );
-                                const bookedHostel = studentReservation ? studentReservation.hostel : 'No hostel booked';
+                                const studentReservation = reservations.find(r => {
+                                    const rUserId = (r.user && typeof r.user === 'object') ? r.user.id : r.user;
+                                    return Number(rUserId) === Number(u.id) && ['pending', 'confirmed'].includes(r.status);
+                                });
+                                const bookedHostel = studentReservation ? (studentReservation.hostel_name || studentReservation.hostel?.name || studentReservation.hostel) : 'No hostel booked';
                                 
                                 return (
                                     <tr key={u.id}>

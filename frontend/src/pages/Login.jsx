@@ -81,11 +81,11 @@ const Login = () => {
                         </>
                     ) : (
                         <>
-                            <label htmlFor="loginName">Full Name</label>
+                            <label htmlFor="loginName">Email, Username or Full Name</label>
                             <input 
                                 type="text" 
                                 id="loginName" 
-                                placeholder="e.g. John Mukasa" 
+                                placeholder="e.g. blessing23455@gmail.com or John Mukasa" 
                                 value={name} 
                                 onChange={e => setName(e.target.value)} 
                                 required 
