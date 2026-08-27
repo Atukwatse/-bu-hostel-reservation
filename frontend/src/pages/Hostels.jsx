@@ -452,7 +452,7 @@ const Hostels = () => {
                                     response = await api.post(API_CONFIG.RESERVATIONS.CREATE, jsonData);
                                 }
                                 
-                                alert('Reservation successful! Your room has been reserved.\n\nMTN Transaction ID: ' + transactionId);
+                                alert('Reservation successful! Your room has been reserved.\n\nPayment Transaction ID: ' + transactionId);
                                 resetMobileMoneyFlow();
                                 setReservationModal(false);
                             } catch (error) {
@@ -536,7 +536,6 @@ const Hostels = () => {
                                             @keyframes mtn-spin { to { transform: rotate(360deg); } }
                                             .mtn-spinner { width: 30px; height: 30px; flex-shrink: 0; border: 3px solid #d1fae5; border-top-color: #10b981; border-radius: 50%; animation: mtn-spin 0.8s linear infinite; }
                                         `}</style>
-
                                         <h4 style={{marginBottom: '0.5rem', color: '#065f46', fontSize: '0.95rem'}}>Pay with MTN Mobile Money</h4>
                                         <p style={{fontSize: '0.88rem', marginBottom: '0.9rem', lineHeight: 1.5}}>
                                             You will pay a 50% deposit of <strong style={{color: '#047857'}}>UGX {depositAmount.toLocaleString()}</strong>.

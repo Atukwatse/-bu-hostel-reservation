@@ -22,85 +22,102 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-# ── Configuration ────────────────────────────────────────────────────────────
-
-_mtn_env = getattr(settings, 'MTN_MOMO_ENV', 'sandbox')
-_mtn_api_user = getattr(settings, 'MTN_MOMO_API_USER', '')
-_mtn_api_key = getattr(settings, 'MTN_MOMO_API_KEY', '')
-_mtn_sub_key = getattr(settings, 'MTN_MOMO_SUBSCRIPTION_KEY', '')
-_mtn_callback_url = getattr(settings, 'MTN_MOMO_CALLBACK_URL', '')
-
 # URLs per environment
 _BASE_URLS = {
     'sandbox': 'https://sandbox.momodeveloper.mtn.com',
     'production': 'https://proxy.momoapi.mtn.com',
 }
-BASE_URL = _BASE_URLS.get(_mtn_env, _BASE_URLS['sandbox'])
 
-# Currency and target environment
 CURRENCY = 'UGX'
-TARGET_ENV = 'sandbox' if _mtn_env == 'sandbox' else 'mtnuganda'
 
 # Token cache
 _token_cache = {'token': None, 'expires_at': 0}
 
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
+# ── Configuration helpers ────────────────────────────────────────────────────
+
+def _config():
+    """Read MTN settings freshly so env changes are picked up without restart."""
+    env = (getattr(settings, 'MTN_MOMO_ENV', '') or 'sandbox').strip().lower()
+    if env not in _BASE_URLS:
+        env = 'sandbox'
+    return {
+        'env': env,
+        'base_url': _BASE_URLS[env],
+        'api_user': (getattr(settings, 'MTN_MOMO_API_USER', '') or '').strip(),
+        'api_key': (getattr(settings, 'MTN_MOMO_API_KEY', '') or '').strip(),
+        'sub_key': (getattr(settings, 'MTN_MOMO_SUBSCRIPTION_KEY', '') or '').strip(),
+        'callback_url': (getattr(settings, 'MTN_MOMO_CALLBACK_URL', '') or '').strip(),
+        'target_env': 'sandbox' if env == 'sandbox' else 'mtnuganda',
+    }
+
 
 def _new_ref_id():
     """Generate a fresh UUID v4 for MTN X-Reference-Id."""
     return str(uuid.uuid4())
 
 
-def _auth_header():
-    """Basic auth header: base64(apiuser:apikey) -> just use requests auth."""
-    import base64
-    cred = base64.b64encode(f'{_mtn_api_user}:{_mtn_api_key}'.encode()).decode()
-    return f'Basic {cred}'
-
-
-def _common_headers():
+def _common_headers(cfg):
     """Headers required on every MTN API call."""
     return {
-        'Ocp-Apim-Subscription-Key': _mtn_sub_key,
-        'X-Target-Environment': TARGET_ENV,
+        'Ocp-Apim-Subscription-Key': cfg['sub_key'],
+        'X-Target-Environment': cfg['target_env'],
     }
 
 
 # ── Step 1: Access Token ────────────────────────────────────────────────────
 
-def get_access_token():
+def get_access_token(retries=3):
     """
     Get or refresh an access token from MTN.
-    Tokens typically live 3600 seconds; we cache with a 60s safety margin.
+    Retries transient sandbox failures.
     """
     now = time.time()
     if _token_cache['token'] and now < _token_cache['expires_at']:
         return _token_cache['token']
 
-    url = f'{BASE_URL}/collection/token/'
-    headers = _common_headers()
+    cfg = _config()
 
-    try:
-        resp = requests.post(
-            url,
-            headers=headers,
-            auth=(_mtn_api_user, _mtn_api_key),
-            timeout=30,
+    if not cfg['api_user'] or not cfg['api_key'] or not cfg['sub_key']:
+        logger.error(
+            '[MTN] Missing API credentials. Check MTN_MOMO_* settings in your .env file.'
         )
-        resp.raise_for_status()
-        data = resp.json()
-        token = data.get('access_token')
-        expires_in = data.get('expires_in', 3600)
-
-        _token_cache['token'] = token
-        _token_cache['expires_at'] = now + expires_in - 60  # 60s buffer
-
-        logger.info('[MTN] Access token obtained, expires in %ss', expires_in)
-        return token
-    except Exception as e:
-        logger.error('[MTN] Failed to get access token: %s', e)
         return None
+
+    url = f"{cfg['base_url']}/collection/token/"
+    headers = _common_headers(cfg)
+
+    last_err = None
+    for attempt in range(1, retries + 1):
+        try:
+            resp = requests.post(
+                url,
+                headers=headers,
+                auth=(cfg['api_user'], cfg['api_key']),
+                timeout=30,
+            )
+            if resp.status_code in (200, 201):
+                data = resp.json()
+                token = data.get('access_token')
+                expires_in = data.get('expires_in', 3600)
+
+                _token_cache['token'] = token
+                _token_cache['expires_at'] = now + expires_in - 60  # 60s buffer
+
+                logger.info('[MTN] Access token obtained, expires in %ss', expires_in)
+                return token
+            else:
+                last_err = f'HTTP {resp.status_code}: {resp.text[:200]}'
+                logger.warning('[MTN] Token request attempt %d failed (%s)', attempt, last_err)
+        except Exception as e:
+            last_err = str(e)
+            logger.warning('[MTN] Token request attempt %d exception: %s', attempt, last_err)
+
+        if attempt < retries:
+            time.sleep(1)
+
+    logger.error('[MTN] Failed to get access token after %d attempts: %s', retries, last_err)
+    return None
 
 
 # ── Step 2: Request to Pay ──────────────────────────────────────────────────
@@ -120,18 +137,19 @@ def request_to_pay(phone, amount, external_id=None, payer_message='Pay for hoste
         dict with 'reference_id' (poll this) and 'status' (SUCCESS/FAILED)
         or dict with 'error' on failure.
     """
+    cfg = _config()
     token = get_access_token()
     if not token:
         return {'error': 'Could not obtain MTN access token. Check your API credentials.'}
 
     reference_id = _new_ref_id()
-    url = f'{BASE_URL}/collection/v1_0/requesttopay'
+    url = f"{cfg['base_url']}/collection/v1_0/requesttopay"
     headers = {
-        **_common_headers(),
+        **_common_headers(cfg),
         'Authorization': f'Bearer {token}',
         'Content-Type': 'application/json',
         'X-Reference-Id': reference_id,
-        'X-Callback-Url': _mtn_callback_url,
+        'X-Callback-Url': cfg['callback_url'],
     }
 
     body = {
@@ -161,7 +179,7 @@ def request_to_pay(phone, amount, external_id=None, payer_message='Pay for hoste
             pass
         logger.error('[MTN] RequestToPay failed (%s): %s', resp.status_code, error_data)
         return {
-            'error': error_data.get('message', f'MTN API returned HTTP {resp.status_code}'),
+            'error': error_data.get('message', f'MTN API returned HTTP {resp.status_code}: {resp.text[:200]}'),
             'status_code': resp.status_code,
         }
     except Exception as e:
@@ -179,13 +197,14 @@ def get_request_to_pay_status(reference_id):
         dict with keys: status, amount, currency, externalId,
         reason (if failed), payer (MSISDN), etc.
     """
+    cfg = _config()
     token = get_access_token()
     if not token:
         return {'error': 'Could not obtain MTN access token.'}
 
-    url = f'{BASE_URL}/collection/v1_0/requesttopay/{reference_id}'
+    url = f"{cfg['base_url']}/collection/v1_0/requesttopay/{reference_id}"
     headers = {
-        **_common_headers(),
+        **_common_headers(cfg),
         'Authorization': f'Bearer {token}',
     }
 
