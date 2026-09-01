@@ -22,14 +22,12 @@ const Hostels = () => {
     const [userRatings, setUserRatings] = useState({});
     const [rooms, setRooms] = useState([]);
     const [loadingRooms, setLoadingRooms] = useState(false);
-    // MTN MoMo prompt-based payment flow
+    // Mobile Money (admin-approval) flow
     const [mmNumber, setMmNumber] = useState('');
-    const [mmPhase, setMmPhase] = useState('idle'); // idle | initiating | awaiting | confirmed | failed
-    const [mmReference, setMmReference] = useState(null);
-    const [mmResult, setMmResult] = useState(null);
+    const [mmAmount, setMmAmount] = useState('');
+    const [mmSent, setMmSent] = useState(false);
     const [mmError, setMmError] = useState('');
-    const [transactionId, setTransactionId] = useState('');
-    const mtnPollRef = useRef(null);
+    const bookingDatePickerRef = useRef(null);
 
     useEffect(() => {
         const fetchHostels = async () => {
@@ -144,72 +142,47 @@ const Hostels = () => {
     };
 
     const resetMobileMoneyFlow = () => {
-        if (mtnPollRef.current) {
-            clearInterval(mtnPollRef.current);
-            mtnPollRef.current = null;
-        }
         setMmNumber('');
-        setMmPhase('idle');
-        setMmReference(null);
-        setMmResult(null);
+        setMmAmount('');
+        setMmSent(false);
         setMmError('');
-        setTransactionId('');
     };
 
-    const startMtnStatusPolling = (reference) => {
-        if (mtnPollRef.current) clearInterval(mtnPollRef.current);
-        let ticks = 0;
-        mtnPollRef.current = setInterval(async () => {
-            ticks += 1;
-            try {
-                const data = await api.get(API_CONFIG.RESERVATIONS.MTN_PAYMENT_STATUS, { reference });
-                if (data.status === 'SUCCESSFUL') {
-                    clearInterval(mtnPollRef.current);
-                    mtnPollRef.current = null;
-                    setMmResult(data);
-                    setTransactionId(data.transaction_id || '');
-                    setMmPhase('confirmed');
-                    return;
-                }
-                if (data.status === 'FAILED' || data.status === 'EXPIRED') {
-                    clearInterval(mtnPollRef.current);
-                    mtnPollRef.current = null;
-                    setMmPhase('failed');
-                    return;
-                }
-            } catch {
-                // Transient network error: keep polling until the timeout below kicks in
+    const normalizeBookingDate = (value, inputEl) => {
+        const v = (value || '').trim();
+        if (!v) return;
+        let normalized = '';
+        const iso = v.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+        if (iso) {
+            normalized = `${iso[1]}-${String(iso[2]).padStart(2, '0')}-${String(iso[3]).padStart(2, '0')}`;
+        } else {
+            const dm = v.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+            if (dm) {
+                const day = String(dm[1]).padStart(2, '0');
+                const mon = String(dm[2]).padStart(2, '0');
+                let yr = dm[3];
+                if (yr.length === 2) yr = '20' + yr;
+                normalized = `${yr}-${mon}-${day}`;
             }
-            // ~100 seconds without confirmation gives up (40 polls x 2.5s)
-            if (ticks > 40 && mtnPollRef.current) {
-                clearInterval(mtnPollRef.current);
-                mtnPollRef.current = null;
-                setMmPhase('failed');
-            }
-        }, 2500);
+        }
+        if (normalized && inputEl) {
+            inputEl.value = normalized;
+        }
     };
 
-    const initiateMtnPayment = async () => {
+    const confirmMoneySent = () => {
         setMmError('');
         const cleanNumber = mmNumber.replace(/[\s-]/g, '');
         if (!/^0\d{9}$/.test(cleanNumber)) {
             setMmError('Enter a valid mobile money number, e.g. 0772123456.');
             return;
         }
-
-        setMmPhase('initiating');
-        try {
-            const data = await api.post(API_CONFIG.RESERVATIONS.INITIATE_MTN_PAYMENT, {
-                phone: cleanNumber,
-                amount: depositAmount,
-            });
-            setMmReference(data.reference);
-            setMmPhase('awaiting');
-            startMtnStatusPolling(data.reference);
-        } catch (error) {
-            setMmError(error.message || 'Could not send the payment prompt. Please try again.');
-            setMmPhase('failed');
+        const amt = parseFloat(mmAmount);
+        if (!amt || amt <= 0) {
+            setMmError('Enter the amount you sent.');
+            return;
         }
+        setMmSent(true);
     };
 
     const renderHostelGrid = (category, data) => {
@@ -263,7 +236,6 @@ const Hostels = () => {
     const privateHostels = filteredHostels.filter(h => h.type === 'private');
     const semesterFee = selectedHostel ? (parseFloat((selectedHostel.price || '').replace(/[^0-9.-]+/g, '')) || 0) : 0;
     const depositAmount = Math.round(semesterFee * 0.5);
-    const mmBusy = mmPhase === 'initiating' || mmPhase === 'awaiting' || mmPhase === 'confirmed';
 
     return (
         <section id="hostels" className="page-section active">
@@ -395,25 +367,41 @@ const Hostels = () => {
                                 const isUpload = document.getElementById('paymentMethod')?.value === 'upload_receipt';
                                 let response;
 
-                                if (paymentMethod === 'mobile_money' && (mmPhase !== 'confirmed' || !transactionId)) {
-                                    alert('Please complete the MTN MoMo payment first.\n\nApprove the payment prompt on your phone and wait for confirmation before reserving.');
+                                if (paymentMethod === 'mobile_money' && !mmSent) {
+                                    alert('Please confirm that you have sent the money first.');
                                     return;
                                 }
 
                                 const priceString = selectedHostel.price || '0';
                                 const totalAmount = parseFloat(priceString.replace(/[^0-9.-]+/g,"")) || 0;
                                 let notesInfo = `Gender: ${document.getElementById('resGender')?.value}, Room Type: ${document.getElementById('resRoomType')?.value}, Room Number: ${document.getElementById('resRoomNumber')?.value || selectedRoom}`;
-                                if (paymentMethod === 'mobile_money' && mmResult) {
-                                    notesInfo += `, MM Provider: ${mmResult.provider || 'MTN MoMo'}, MM Amount: ${mmResult.amount != null ? 'UGX ' + Number(mmResult.amount).toLocaleString() : 'N/A'}, Paid From: ${mmResult.phone || mmNumber}, MM Date: ${mmResult.datetime || 'N/A'}, Source: Auto-confirmed via MTN MoMo payment prompt`;
+                                if (paymentMethod === 'mobile_money') {
+                                    notesInfo += `, Payer MoMo Number: ${mmNumber}, Amount Sent: ${mmAmount ? 'UGX ' + Number(mmAmount).toLocaleString() : 'N/A'}, Paid To (Caretaker): ${selectedHostel.caretaker_phone || '0769559707'}, Status: Awaiting admin approval`;
                                 }
                                 
-                                const bookingDate = document.getElementById('resBookingDate')?.value || '';
+                                const bookingDate = (() => {
+                                    const raw = document.getElementById('resBookingDate')?.value || '';
+                                    if (!raw) return '';
+                                    const m = raw.trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+                                    if (m) return `${m[1]}-${String(m[2]).padStart(2, '0')}-${String(m[3]).padStart(2, '0')}`;
+                                    const d = raw.trim().match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+                                    if (d) {
+                                        const day = String(d[1]).padStart(2, '0');
+                                        const mon = String(d[2]).padStart(2, '0');
+                                        let yr = d[3];
+                                        if (yr.length === 2) yr = '20' + yr;
+                                        return `${yr}-${mon}-${day}`;
+                                    }
+                                    return raw;
+                                })();
                                 let checkOutStr = '2024-12-20';
                                 if (bookingDate) {
                                     const bookingDateVal = new Date(bookingDate);
-                                    const checkOutDateVal = new Date(bookingDateVal);
-                                    checkOutDateVal.setMonth(checkOutDateVal.getMonth() + 4);
-                                    checkOutStr = checkOutDateVal.toISOString().split('T')[0];
+                                    if (!isNaN(bookingDateVal.getTime())) {
+                                        const checkOutDateVal = new Date(bookingDateVal);
+                                        checkOutDateVal.setMonth(checkOutDateVal.getMonth() + 4);
+                                        checkOutStr = checkOutDateVal.toISOString().split('T')[0];
+                                    }
                                 }
 
                                 if (isUpload) {
@@ -426,7 +414,12 @@ const Hostels = () => {
                                     formData.append('check_in_date', bookingDate || '2024-09-01');
                                     formData.append('check_out_date', checkOutStr);
                                     formData.append('booking_date', bookingDate);
-                                    formData.append('transaction_id', transactionId);
+                                    formData.append('transaction_id', '');
+                                    if (paymentMethod === 'mobile_money') {
+                                        formData.append('mm_number', mmNumber);
+                                        formData.append('mm_amount', parseFloat(mmAmount) || 0);
+                                        formData.append('caretaker_phone', selectedHostel.caretaker_phone || '0769559707');
+                                    }
                                     formData.append('notes', notesInfo);
                                     
                                     const fileInput = document.getElementById('receiptUpload');
@@ -445,14 +438,23 @@ const Hostels = () => {
                                         check_in_date: bookingDate || '2024-09-01',
                                         check_out_date: checkOutStr,
                                         booking_date: bookingDate,
-                                        transaction_id: transactionId,
+                                        transaction_id: '',
                                         notes: notesInfo
                                     };
+                                    if (paymentMethod === 'mobile_money') {
+                                        jsonData.mm_number = mmNumber;
+                                        jsonData.mm_amount = parseFloat(mmAmount) || 0;
+                                        jsonData.caretaker_phone = selectedHostel.caretaker_phone || '0769559707';
+                                    }
                                     
                                     response = await api.post(API_CONFIG.RESERVATIONS.CREATE, jsonData);
                                 }
                                 
-                                alert('Reservation successful! Your room has been reserved.\n\nPayment Transaction ID: ' + transactionId);
+                                if (paymentMethod === 'mobile_money') {
+                                    alert('Your reservation has been submitted!\n\nThe hostel caretaker will confirm your payment, and an admin will approve it on the admin dashboard. You will see the payment status update once approved.');
+                                } else {
+                                    alert('Reservation successful! Your room has been reserved.');
+                                }
                                 resetMobileMoneyFlow();
                                 setReservationModal(false);
                             } catch (error) {
@@ -478,7 +480,33 @@ const Hostels = () => {
                             </select>
 
                             <label htmlFor="resBookingDate">Booking Date</label>
-                            <input type="date" id="resBookingDate" required style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '1rem' }} />
+                            <div style={{ position: 'relative', width: '100%', marginBottom: '1rem' }}>
+                                <input
+                                    type="text"
+                                    id="resBookingDate"
+                                    required
+                                    placeholder="Click calendar icon or type date (YYYY-MM-DD or DD/MM/YYYY)"
+                                    onBlur={(e) => normalizeBookingDate(e.target.value, e.target)}
+                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', paddingRight: '2.5rem' }}
+                                />
+                                <span
+                                    onClick={() => bookingDatePickerRef.current?.showPicker ? bookingDatePickerRef.current.showPicker() : bookingDatePickerRef.current?.click()}
+                                    title="Open calendar"
+                                    style={{ position: 'absolute', right: '0.6rem', top: '50%', transform: 'translateY(-50%)', fontSize: '1.2rem', cursor: 'pointer', color: '#1e3a8a', background: 'none', border: 'none', padding: '0.25rem' }}
+                                >📅</span>
+                                <input
+                                    type="date"
+                                    ref={bookingDatePickerRef}
+                                    style={{ position: 'absolute', width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' }}
+                                    tabIndex={-1}
+                                    aria-hidden="true"
+                                    onChange={(e) => {
+                                        if (e.target.value) {
+                                            document.getElementById('resBookingDate').value = e.target.value;
+                                        }
+                                    }}
+                                />
+                            </div>
 
                             <label htmlFor="resRoomNumber">Room Number</label>
                             <select id="resRoomNumber" required>
@@ -525,107 +553,81 @@ const Hostels = () => {
                                     setPaymentMethod(next);
                                 }} required>
                                     <option value="">Select Method</option>
-                                    <option value="mobile_money">Mobile Money (MTN MoMo Prompt)</option>
+                                    <option value="mobile_money">Mobile Money (Send to Caretaker)</option>
                                     <option value="bank_transfer">Bank Transfer</option>
                                     <option value="upload_receipt">I have already paid (Upload Receipt)</option>
                                 </select>
 
                                 {paymentMethod === 'mobile_money' && (
                                     <div style={{marginTop: '1rem', background: '#f8fafc', padding: '1rem', borderLeft: '4px solid #10b981', borderRadius: '4px', border: '1px solid #e2e8f0', marginBottom: '1rem'}}>
-                                        <style>{`
-                                            @keyframes mtn-spin { to { transform: rotate(360deg); } }
-                                            .mtn-spinner { width: 30px; height: 30px; flex-shrink: 0; border: 3px solid #d1fae5; border-top-color: #10b981; border-radius: 50%; animation: mtn-spin 0.8s linear infinite; }
-                                        `}</style>
-                                        <h4 style={{marginBottom: '0.5rem', color: '#065f46', fontSize: '0.95rem'}}>Pay with MTN Mobile Money</h4>
+                                        <h4 style={{marginBottom: '0.5rem', color: '#065f46', fontSize: '0.95rem'}}>Pay by Mobile Money to the Caretaker</h4>
                                         <p style={{fontSize: '0.88rem', marginBottom: '0.9rem', lineHeight: 1.5}}>
-                                            You will pay a 50% deposit of <strong style={{color: '#047857'}}>UGX {depositAmount.toLocaleString()}</strong>.
-                                            A payment prompt will be sent to your phone — just enter your MTN PIN to approve.
-                                            No need to copy any message: the Transaction ID is generated and filled in automatically.
+                                            1. Send the 50% deposit of <strong style={{color: '#047857'}}>UGX {depositAmount.toLocaleString()}</strong> to the caretaker below.<br/>
+                                            2. Enter your sender number and the amount.<br/>
+                                            3. An admin will verify and approve your payment — the Transaction ID is generated automatically on approval.
                                         </p>
 
-                                        <label htmlFor="mmNumber" style={{display: 'block', marginBottom: '0.25rem'}}>Your MTN Mobile Money Number</label>
-                                        <input
-                                            type="tel"
-                                            id="mmNumber"
-                                            value={mmNumber}
-                                            onChange={(e) => setMmNumber(e.target.value)}
-                                            placeholder="e.g. 0772123456"
-                                            disabled={mmBusy}
-                                            required={mmPhase === 'idle' || mmPhase === 'failed'}
-                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '0.75rem' }}
-                                        />
+                                        <div style={{background: '#ecfdf5', border: '1px solid #10b981', borderRadius: '6px', padding: '0.6rem 0.75rem', marginBottom: '0.9rem'}}>
+                                            <div style={{fontSize: '0.78rem', color: '#047857', textTransform: 'uppercase', letterSpacing: '0.04em'}}>Send money to this caretaker number</div>
+                                            <div style={{fontSize: '1.1rem', fontWeight: '700', color: '#065f46', fontFamily: 'monospace'}}>{selectedHostel.caretaker_phone || '0769559707'}</div>
+                                        </div>
 
-                                        {(mmPhase === 'idle' || mmPhase === 'failed') && (
-                                            <button
-                                                type="button"
-                                                className="primary-btn"
-                                                onClick={initiateMtnPayment}
-                                                style={{width: '100%', marginBottom: '0.75rem'}}
-                                            >
-                                                Pay UGX {depositAmount.toLocaleString()} Now
-                                            </button>
-                                        )}
+                                        {!mmSent ? (
+                                            <>
+                                                <label htmlFor="mmNumber" style={{display: 'block', marginBottom: '0.25rem'}}>Your Mobile Money Number (sender)</label>
+                                                <input
+                                                    type="tel"
+                                                    id="mmNumber"
+                                                    value={mmNumber}
+                                                    onChange={(e) => setMmNumber(e.target.value.replace(/[^\d]/g, ''))}
+                                                    placeholder="e.g. 0772123456"
+                                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '0.75rem' }}
+                                                />
 
-                                        {mmPhase === 'initiating' && (
-                                            <button type="button" className="primary-btn" disabled style={{width: '100%', marginBottom: '0.75rem', opacity: 0.7}}>
-                                                Sending payment prompt...
-                                            </button>
-                                        )}
+                                                <label htmlFor="mmAmount" style={{display: 'block', marginBottom: '0.25rem'}}>Amount Sent (UGX)</label>
+                                                <input
+                                                    type="number"
+                                                    id="mmAmount"
+                                                    value={mmAmount}
+                                                    onChange={(e) => setMmAmount(e.target.value)}
+                                                    placeholder={`e.g. ${depositAmount}`}
+                                                    min="1"
+                                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '0.75rem' }}
+                                                />
 
-                                        {(mmPhase === 'initiating' || mmPhase === 'awaiting') && (
-                                            <div style={{background: '#fffbeb', border: '1px solid #f59e0b', borderRadius: '6px', padding: '1rem', marginBottom: '1rem'}}>
-                                                <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
-                                                    <div className="mtn-spinner"></div>
-                                                    <strong style={{color: '#92400e', fontSize: '0.95rem'}}>Awaiting payment confirmation...</strong>
-                                                </div>
-                                                <p style={{margin: '0.75rem 0 0 0', fontSize: '0.85rem', color: '#78350f', lineHeight: 1.5}}>
-                                                    A payment request of <strong>UGX {depositAmount.toLocaleString()}</strong> has been sent to your phone{' '}
-                                                    <strong>{(mmNumber || '').slice(0, 4)} *** {(mmNumber || '').slice(-3)}</strong>.<br/>
-                                                    Please enter your MTN MoMo PIN on your phone to approve the payment. Do not close this window.
-                                                </p>
-                                                {mmPhase === 'awaiting' && (
-                                                    <p style={{margin: '0.5rem 0 0 0', fontSize: '0.75rem', color: '#b45309'}}>
-                                                        Reference: {mmReference}
-                                                    </p>
+                                                {mmError && (
+                                                    <p style={{fontSize: '0.85rem', color: '#ef4444', margin: '0 0 0.75rem 0'}}>{mmError}</p>
                                                 )}
-                                            </div>
-                                        )}
 
-                                        {mmPhase === 'confirmed' && mmResult && (
-                                            <div style={{background: '#ecfdf5', border: '1px solid #10b981', borderRadius: '6px', padding: '0.75rem', marginBottom: '1rem'}}>
-                                                <p style={{margin: '0 0 0.5rem 0', fontWeight: '600', color: '#065f46', fontSize: '0.92rem'}}>
-                                                    ✅ Payment confirmed via {mmResult.provider || 'MTN MoMo'}!
-                                                </p>
-                                                <div style={{display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.25rem 0.75rem', fontSize: '0.85rem'}}>
-                                                    <span style={{color: '#64748b'}}>Amount:</span><strong>UGX {Number(mmResult.amount).toLocaleString()}</strong>
-                                                    <span style={{color: '#64748b'}}>Paid From:</span><strong>{mmResult.phone}</strong>
-                                                    {mmResult.datetime && (<><span style={{color: '#64748b'}}>Date/Time:</span><strong>{mmResult.datetime}</strong></>)}
+                                                <button
+                                                    type="button"
+                                                    className="primary-btn"
+                                                    onClick={confirmMoneySent}
+                                                    style={{width: '100%', marginBottom: '0.5rem'}}
+                                                >
+                                                    I have sent the money
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <div style={{background: '#ecfdf5', border: '1px solid #10b981', borderRadius: '6px', padding: '1rem', marginBottom: '0.75rem'}}>
+                                                <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                                                    <span style={{flexShrink: 0, width: '22px', height: '22px', borderRadius: '50%', background: '#10b981', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.8rem'}}>&#10003;</span>
+                                                    <strong style={{color: '#065f46', fontSize: '0.95rem'}}>Note recorded — ready to submit</strong>
                                                 </div>
-                                                <p style={{margin: '0.5rem 0 0 0', fontSize: '0.8rem', color: '#047857'}}>
-                                                    The Transaction ID has been generated and auto-filled below.
+                                                <p style={{margin: '0.75rem 0 0 0', fontSize: '0.85rem', color: '#065f46', lineHeight: 1.5}}>
+                                                    You noted that you sent <strong>UGX {Number(mmAmount).toLocaleString()}</strong> from <strong>{mmNumber}</strong> to{' '}
+                                                    <strong>{selectedHostel.caretaker_phone || '0769559707'}</strong>.<br/>
+                                                    Click <strong>Submit Reservation</strong> below. Once submitted, the admin will review and approve your payment later — you'll see a confirmation once it's approved.
                                                 </p>
+                                                <button
+                                                    type="button"
+                                                    style={{marginTop: '0.75rem', background: 'none', border: '1px solid #10b981', color: '#065f46', padding: '0.3rem 0.75rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem'}}
+                                                    onClick={resetMobileMoneyFlow}
+                                                >
+                                                    Edit details
+                                                </button>
                                             </div>
                                         )}
-
-                                        {mmError && (
-                                            <p style={{fontSize: '0.85rem', color: '#ef4444', margin: '0 0 0.75rem 0'}}>{mmError}</p>
-                                        )}
-                                        {mmPhase === 'failed' && !mmError && (
-                                            <p style={{fontSize: '0.85rem', color: '#ef4444', margin: '0 0 0.75rem 0'}}>
-                                                ⚠️ Payment was not completed (timed out or declined). Please try again.
-                                            </p>
-                                        )}
-
-                                        <label htmlFor="transactionId" style={{display: 'block', marginBottom: '0.25rem'}}>Transaction ID (auto-generated)</label>
-                                        <input
-                                            type="text"
-                                            id="transactionId"
-                                            value={transactionId}
-                                            readOnly
-                                            placeholder="Filled in automatically after you approve the payment prompt"
-                                            required
-                                            style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '0.5rem', background: transactionId ? '#ecfdf5' : '#f1f5f9', color: '#065f46', fontFamily: 'monospace', fontWeight: '600' }}
-                                        />
                                     </div>
                                 )}
 
@@ -650,13 +652,13 @@ const Hostels = () => {
                             <button
                                 type="submit"
                                 className="primary-btn"
-                                disabled={paymentMethod === 'mobile_money' && mmPhase !== 'confirmed'}
-                                title={paymentMethod === 'mobile_money' && mmPhase !== 'confirmed' ? 'Complete the MTN MoMo payment first' : undefined}
+                                disabled={paymentMethod === 'mobile_money' && !mmSent}
+                                title={paymentMethod === 'mobile_money' && !mmSent ? 'Confirm that you have sent the money first' : undefined}
                             >
-                                {paymentMethod === 'mobile_money' && mmPhase === 'awaiting'
-                                    ? 'Waiting for payment confirmation...'
-                                    : paymentMethod === 'mobile_money' && mmPhase !== 'confirmed'
-                                        ? 'Pay First to Continue'
+                                {paymentMethod === 'mobile_money' && mmSent
+                                    ? 'Submit Reservation for Approval'
+                                    : paymentMethod === 'mobile_money' && !mmSent
+                                        ? 'Confirm You Sent the Money First'
                                         : 'Confirm Reservation'}
                             </button>
                         </form>

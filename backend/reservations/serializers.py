@@ -32,7 +32,7 @@ class ReservationSerializer(serializers.ModelSerializer):
             'is_fully_paid', 'semester', 'academic_year', 'check_in_date',
             'check_out_date', 'booking_date', 'transaction_id', 'special_requests', 'notes', 'receipt_image',
             'payments', 'is_active', 'created_at', 'updated_at',
-            'confirmed_at', 'cancelled_at'
+            'confirmed_at', 'cancelled_at', 'mm_number', 'mm_amount', 'caretaker_phone'
         ]
         read_only_fields = [
             'reservation_code', 'user', 'amount_paid', 'created_at',
@@ -58,7 +58,7 @@ class ReservationCreateSerializer(serializers.ModelSerializer):
         fields = [
             'hostel', 'room', 'payment_method', 'total_amount', 'semester',
             'academic_year', 'check_in_date', 'check_out_date', 'booking_date', 'transaction_id',
-            'special_requests', 'notes', 'receipt_image'
+            'special_requests', 'notes', 'receipt_image', 'mm_number', 'mm_amount', 'caretaker_phone'
         ]
 
     def validate(self, data):

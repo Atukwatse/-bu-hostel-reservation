@@ -41,6 +41,10 @@ class Reservation(models.Model):
     check_out_date = models.DateField()
     booking_date = models.DateField(blank=True, null=True)
     transaction_id = models.CharField(max_length=100, blank=True, default='')
+    # Mobile Money (approval-based) request details
+    mm_number = models.CharField(max_length=20, blank=True, default='')  # payer's mobile money number
+    mm_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)  # amount student says they sent
+    caretaker_phone = models.CharField(max_length=20, blank=True, default='')  # number funds were sent to
     special_requests = models.TextField(blank=True)
     notes = models.TextField(blank=True)
     receipt_image = models.ImageField(upload_to='receipts/', blank=True, null=True)

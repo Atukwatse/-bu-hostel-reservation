@@ -391,6 +391,10 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes mtn-spin {
+    to { transform: rotate(360deg); }
+}
+
 .close-modal {
     position: absolute;
     top: 1rem;

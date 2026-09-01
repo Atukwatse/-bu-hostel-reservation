@@ -284,6 +284,19 @@ const AdminDashboard = () => {
         }
     };
 
+    const handleApprovePayment = async (reservationId) => {
+        if (window.confirm('Approve this mobile money payment?\n\nThe Transaction ID will be generated automatically and the reservation will be confirmed.')) {
+            try {
+                const data = await api.post(API_CONFIG.RESERVATIONS.APPROVE_PAYMENT(reservationId), {});
+                alert(`Payment approved!\n\nTransaction ID: ${data.transaction_id}`);
+                fetchAdminData({ withSpinner: false });
+            } catch (error) {
+                console.error('Error approving payment:', error);
+                alert(`Failed to approve payment: ${error.message}`);
+            }
+        }
+    };
+
     // Caretaker handler functions
     const handleAddCaretaker = () => {
         setEditingCaretaker(null);
@@ -619,6 +632,25 @@ const AdminDashboard = () => {
                                             <span style={{ fontFamily: 'monospace', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.85rem', fontWeight: '500', color: '#1e3a8a' }}>
                                                 {reservation.transaction_id}
                                             </span>
+                                        ) : reservation.payment_method === 'mobile_money' ? (
+                                            <span style={{ color: '#b45309', fontSize: '0.8rem', fontStyle: 'italic' }}>
+                                                Waiting for approval
+                                                {reservation.mm_number && (
+                                                    <span style={{ display: 'block', color: '#78350f', fontStyle: 'normal' }}>
+                                                        Sender: {reservation.mm_number}
+                                                    </span>
+                                                )}
+                                                {reservation.mm_amount > 0 && (
+                                                    <span style={{ display: 'block', color: '#78350f', fontStyle: 'normal' }}>
+                                                        Amount: UGX {Number(reservation.mm_amount).toLocaleString()}
+                                                    </span>
+                                                )}
+                                                {reservation.caretaker_phone && (
+                                                    <span style={{ display: 'block', color: '#78350f', fontStyle: 'normal' }}>
+                                                        Paid to: {reservation.caretaker_phone}
+                                                    </span>
+                                                )}
+                                            </span>
                                         ) : (
                                             <span style={{ color: '#94a3b8', fontSize: '0.85rem', fontStyle: 'italic' }}>None</span>
                                         )}
@@ -634,7 +666,17 @@ const AdminDashboard = () => {
                                         </span>
                                     </td>
                                     <td>
-                                        {reservation.status === 'pending' && (
+                                        {reservation.payment_method === 'mobile_money' && reservation.status === 'pending' && (
+                                            <button 
+                                                className="btn-confirm" 
+                                                style={{marginRight: '5px', backgroundColor: '#8b5cf6', color: 'white', border: 'none', padding: '0.25rem 0.5rem', borderRadius: '4px', cursor: 'pointer'}}
+                                                title="Verify the payment and generate the Transaction ID"
+                                                onClick={() => handleApprovePayment(reservation.id)}
+                                            >
+                                                Approve Payment
+                                            </button>
+                                        )}
+                                        {reservation.status === 'pending' && reservation.payment_method !== 'mobile_money' && (
                                             <button 
                                                 className="btn-confirm" 
                                                 style={{marginRight: '5px', backgroundColor: '#10b981', color: 'white', border: 'none', padding: '0.25rem 0.5rem', borderRadius: '4px', cursor: 'pointer'}}

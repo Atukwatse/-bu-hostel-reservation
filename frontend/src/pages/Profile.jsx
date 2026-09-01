@@ -1,50 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, API_CONFIG } from '../services/api';
+import { PhoneInput, digitsOnly, isValidPhoneNumber } from '../components/PhoneInput';
 
-const COUNTRY_CODES = [
-    { group: 'East Africa', options: [
-        ['+256', '\u{1F1FA}\u{1F1EC} Uganda (+256)'],
-        ['+250', '\u{1F1F7}\u{1F1FC} Rwanda (+250)'],
-        ['+255', '\u{1F1F9}\u{1F1FF} Tanzania (+255)'],
-        ['+254', '\u{1F1F0}\u{1F1EA} Kenya (+254)'],
-        ['+211', '\u{1F1F8}\u{1F1F8} South Sudan (+211)'],
-        ['+257', '\u{1F1E7}\u{1F1EE} Burundi (+257)'],
-    ]},
-    { group: 'West Africa', options: [
-        ['+234', '\u{1F1F3}\u{1F1EC} Nigeria (+234)'],
-        ['+233', '\u{1F1EC}\u{1F1ED} Ghana (+233)'],
-        ['+225', "\u{1F1E8}\u{1F1EE} C\u00f4te d'Ivoire (+225)"],
-        ['+229', '\u{1F1E7}\u{1F1EF} Benin (+229)'],
-    ]},
-    { group: 'Southern Africa', options: [
-        ['+27', '\u{1F1FF}\u{1F1E6} South Africa (+27)'],
-        ['+263', '\u{1F1FF}\u{1F1FC} Zimbabwe (+263)'],
-        ['+260', '\u{1F1FF}\u{1F2F2} Zambia (+260)'],
-        ['+265', '\u{1F1F2}\u{1F1FC} Malawi (+265)'],
-    ]},
-    { group: 'International', options: [
-        ['+1', '\u{1F1FA}\u{1F1F8} United States (+1)'],
-        ['+44', '\u{1F1EC}\u{1F1E7} United Kingdom (+44)'],
-        ['+33', '\u{1F1EB}\u{1F1F7} France (+33)'],
-        ['+49', '\u{1F1E9}\u{1F1EA} Germany (+49)'],
-        ['+91', '\u{1F1EE}\u{1F1F3} India (+91)'],
-        ['+86', '\u{1F1E8}\u{1F1F3} China (+86)'],
-    ]},
-];
-
-const CountryCodeSelect = ({ id, value, onChange }) => (
-    <select id={id} value={value} onChange={onChange} required style={{ width: '30%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}>
-        <option value="">Select Country</option>
-        {COUNTRY_CODES.map((group) => (
-            <optgroup key={group.group} label={group.group}>
-                {group.options.map(([code, label]) => (
-                    <option key={code + id} value={code}>{label}</option>
-                ))}
-            </optgroup>
-        ))}
-    </select>
-);
 
 const Profile = () => {
     const navigate = useNavigate();
@@ -97,21 +55,12 @@ const Profile = () => {
             return;
         }
 
-        const phoneRegex = /^\d+$/;
-        if (!phoneRegex.test(formData.phone.trim())) {
-            setMessage({ type: 'error', text: 'Phone number must contain only digits.' });
+        if (!isValidPhoneNumber(digitsOnly(formData.phone), formData.countryCode)) {
+            setMessage({ type: 'error', text: 'Please enter a valid phone number (digits only, matching the selected country code).' });
             return;
         }
-        if (formData.kinPhone.trim() && !phoneRegex.test(formData.kinPhone.trim())) {
-            setMessage({ type: 'error', text: 'Next of kin phone number must contain only digits.' });
-            return;
-        }
-        if (formData.phone.trim().length < 6) {
-            setMessage({ type: 'error', text: 'Phone number must be at least 6 digits long.' });
-            return;
-        }
-        if (formData.kinPhone.trim() && formData.kinPhone.trim().length < 6) {
-            setMessage({ type: 'error', text: 'Next of kin phone number must be at least 6 digits long.' });
+        if (formData.kinPhone.trim() && !isValidPhoneNumber(digitsOnly(formData.kinPhone), formData.kinCountryCode)) {
+            setMessage({ type: 'error', text: 'Please enter a valid next of kin phone number (digits only, matching the selected country code).' });
             return;
         }
 
@@ -122,12 +71,12 @@ const Profile = () => {
                 email: formData.email.trim(),
                 first_name: formData.firstName.trim(),
                 last_name: formData.lastName.trim(),
-                phone: formData.phone.trim(),
+                phone: digitsOnly(formData.phone),
                 country_code: formData.countryCode,
                 gender: formData.gender,
                 program_of_study: formData.course,
                 next_of_kin_name: formData.kinName.trim(),
-                next_of_kin_phone: formData.kinPhone.trim(),
+                next_of_kin_phone: digitsOnly(formData.kinPhone),
                 next_of_kin_country_code: formData.kinCountryCode,
             };
             if (formData.yearOfStudy) {
@@ -207,10 +156,14 @@ const Profile = () => {
                     <input type="email" id="email" placeholder="e.g. john.mukasa@gmail.com" value={formData.email} onChange={handleChange} required />
 
                     <label htmlFor="phone">Phone Number</label>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                        <CountryCodeSelect id="countryCode" value={formData.countryCode} onChange={handleChange} />
-                        <input type="tel" id="phone" placeholder="e.g. 712345678" style={{ flex: 1 }} value={formData.phone} onChange={handleChange} required />
-                    </div>
+                    <PhoneInput
+                        id="phone"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        countryCode={formData.countryCode}
+                        onCountryCodeChange={handleChange}
+                        countryCodeId="countryCode"
+                    />
 
                     <h3 className="form-section-heading">ACADEMIC INFO</h3>
 
@@ -248,10 +201,14 @@ const Profile = () => {
                     <input type="text" id="kinName" placeholder="e.g. Jane Mukasa" value={formData.kinName} onChange={handleChange} />
 
                     <label htmlFor="kinPhone">Next of Kin Contact</label>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                        <CountryCodeSelect id="kinCountryCode" value={formData.kinCountryCode} onChange={handleChange} />
-                        <input type="tel" id="kinPhone" placeholder="e.g. 712345678" style={{ flex: 1 }} value={formData.kinPhone} onChange={handleChange} />
-                    </div>
+                    <PhoneInput
+                        id="kinPhone"
+                        value={formData.kinPhone}
+                        onChange={handleChange}
+                        countryCode={formData.kinCountryCode}
+                        onCountryCodeChange={handleChange}
+                        countryCodeId="kinCountryCode"
+                    />
 
                     <button type="submit" className="primary-btn black-btn" disabled={saving}>
                         {saving ? 'Saving...' : 'Save Changes'}

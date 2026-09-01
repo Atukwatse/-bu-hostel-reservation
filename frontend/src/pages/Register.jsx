@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api, API_CONFIG } from '../services/api';
+import { PhoneInput, digitsOnly, isValidPhoneNumber } from '../components/PhoneInput';
 
 const Register = () => {
     const navigate = useNavigate();
@@ -29,24 +30,15 @@ const Register = () => {
             return;
         }
 
-        // Validate phone numbers - digits only
-        const phoneRegex = /^\d+$/;
-        if (!phoneRegex.test(formData.phone.trim())) {
-            alert('Phone number must contain only digits (no letters or special characters).');
+        // Validate phone numbers - digits only and correct length
+        const phone = digitsOnly(formData.phone);
+        const kinPhone = digitsOnly(formData.kinPhone);
+        if (!isValidPhoneNumber(phone, formData.countryCode)) {
+            alert('Please enter a valid phone number (digits only, matching the selected country code).');
             return;
         }
-        if (!phoneRegex.test(formData.kinPhone.trim())) {
-            alert('Next of kin phone number must contain only digits (no letters or special characters).');
-            return;
-        }
-
-        // Validate phone length (minimum 6 digits for most countries)
-        if (formData.phone.trim().length < 6) {
-            alert('Phone number must be at least 6 digits long.');
-            return;
-        }
-        if (formData.kinPhone.trim().length < 6) {
-            alert('Next of kin phone number must be at least 6 digits long.');
+        if (!isValidPhoneNumber(kinPhone, formData.kinCountryCode)) {
+            alert('Please enter a valid next of kin phone number (digits only, matching the selected country code).');
             return;
         }
 
@@ -54,7 +46,7 @@ const Register = () => {
             const newUser = {
                 username: formData.email.trim(), // Use email as username for uniqueness
                 email: formData.email.trim(),
-                phone: formData.phone.trim(),
+                phone: phone,
                 country_code: formData.countryCode,
                 password: formData.password,
                 password_confirm: formData.confirmPassword,
@@ -64,7 +56,7 @@ const Register = () => {
                 first_name: trimmedName.split(/\s+/)[0] || '',
                 last_name: trimmedName.split(/\s+/).slice(1).join(' ') || '',
                 next_of_kin_name: formData.kinName.trim(),
-                next_of_kin_phone: formData.kinPhone.trim(),
+                next_of_kin_phone: kinPhone,
                 next_of_kin_country_code: formData.kinCountryCode
             };
 
@@ -96,79 +88,27 @@ const Register = () => {
                     <input type="email" id="email" placeholder="e.g. john.mukasa@gmail.com" value={formData.email} onChange={handleChange} required />
 
                     <label htmlFor="phone">Phone Number</label>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                        <select id="countryCode" value={formData.countryCode} onChange={handleChange} required style={{ width: '30%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}>
-                            <option value="">Select Country</option>
-                            <optgroup label="East Africa">
-                                <option value="+256" selected>🇺🇬 Uganda (+256)</option>
-                                <option value="+250">🇷🇼 Rwanda (+250)</option>
-                                <option value="+255">🇹🇿 Tanzania (+255)</option>
-                                <option value="+254">🇰🇪 Kenya (+254)</option>
-                                <option value="+211">🇸🇸 South Sudan (+211)</option>
-                                <option value="+257">🇧🇮 Burundi (+257)</option>
-                            </optgroup>
-                            <optgroup label="West Africa">
-                                <option value="+234">🇳🇬 Nigeria (+234)</option>
-                                <option value="+233">🇬🇭 Ghana (+233)</option>
-                                <option value="+225">🇨🇮 Côte d'Ivoire (+225)</option>
-                                <option value="+229">🇧🇯 Benin (+229)</option>
-                            </optgroup>
-                            <optgroup label="Southern Africa">
-                                <option value="+27">🇿🇦 South Africa (+27)</option>
-                                <option value="+263">🇿🇼 Zimbabwe (+263)</option>
-                                <option value="+260">🇿🇲 Zambia (+260)</option>
-                                <option value="+265">🇲🇼 Malawi (+265)</option>
-                            </optgroup>
-                            <optgroup label="International">
-                                <option value="+1">🇺🇸 United States (+1)</option>
-                                <option value="+44">🇬🇧 United Kingdom (+44)</option>
-                                <option value="+33">🇫🇷 France (+33)</option>
-                                <option value="+49">🇩🇪 Germany (+49)</option>
-                                <option value="+91">🇮🇳 India (+91)</option>
-                                <option value="+86">🇨🇳 China (+86)</option>
-                            </optgroup>
-                        </select>
-                        <input type="tel" id="phone" placeholder="e.g. 712345678" style={{ flex: 1 }} value={formData.phone} onChange={handleChange} required />
-                    </div>
+                    <PhoneInput
+                        id="phone"
+                        value={formData.phone}
+                        onChange={handleChange}
+                        countryCode={formData.countryCode}
+                        onCountryCodeChange={handleChange}
+                        countryCodeId="countryCode"
+                    />
 
                     <label htmlFor="kinName">Next of Kin Name</label>
                     <input type="text" id="kinName" placeholder="e.g. Jane Mukasa" value={formData.kinName} onChange={handleChange} required />
 
                     <label htmlFor="kinPhone">Next of Kin Contact</label>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                        <select id="kinCountryCode" value={formData.kinCountryCode} onChange={handleChange} required style={{ width: '30%', padding: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}>
-                            <option value="">Select Country</option>
-                            <optgroup label="East Africa">
-                                <option value="+256" selected>🇺🇬 Uganda (+256)</option>
-                                <option value="+250">🇷🇼 Rwanda (+250)</option>
-                                <option value="+255">🇹🇿 Tanzania (+255)</option>
-                                <option value="+254">🇰🇪 Kenya (+254)</option>
-                                <option value="+211">🇸🇸 South Sudan (+211)</option>
-                                <option value="+257">🇧🇮 Burundi (+257)</option>
-                            </optgroup>
-                            <optgroup label="West Africa">
-                                <option value="+234">🇳🇬 Nigeria (+234)</option>
-                                <option value="+233">🇬🇭 Ghana (+233)</option>
-                                <option value="+225">🇨🇮 Côte d'Ivoire (+225)</option>
-                                <option value="+229">🇧🇯 Benin (+229)</option>
-                            </optgroup>
-                            <optgroup label="Southern Africa">
-                                <option value="+27">🇿🇦 South Africa (+27)</option>
-                                <option value="+263">🇿🇼 Zimbabwe (+263)</option>
-                                <option value="+260">🇿🇲 Zambia (+260)</option>
-                                <option value="+265">🇲🇼 Malawi (+265)</option>
-                            </optgroup>
-                            <optgroup label="International">
-                                <option value="+1">🇺🇸 United States (+1)</option>
-                                <option value="+44">🇬🇧 United Kingdom (+44)</option>
-                                <option value="+33">🇫🇷 France (+33)</option>
-                                <option value="+49">🇩🇪 Germany (+49)</option>
-                                <option value="+91">🇮🇳 India (+91)</option>
-                                <option value="+86">🇨🇳 China (+86)</option>
-                            </optgroup>
-                        </select>
-                        <input type="tel" id="kinPhone" placeholder="e.g. 712345678" style={{ flex: 1 }} value={formData.kinPhone} onChange={handleChange} required />
-                    </div>
+                    <PhoneInput
+                        id="kinPhone"
+                        value={formData.kinPhone}
+                        onChange={handleChange}
+                        countryCode={formData.kinCountryCode}
+                        onCountryCodeChange={handleChange}
+                        countryCodeId="kinCountryCode"
+                    />
 
                     <h3 className="form-section-heading">ACADEMIC INFO</h3>
                     <label htmlFor="gender">Gender</label>

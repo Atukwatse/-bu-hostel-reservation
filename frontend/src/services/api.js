@@ -53,8 +53,7 @@ export const API_CONFIG = {
         PAYMENTS: (id) => `/reservations/reservations/${id}/payments/`,
         ADD_PAYMENT: (id) => `/reservations/reservations/${id}/add_payment/`,
         PARSE_MOBILE_MONEY: '/reservations/reservations/parse_mobile_money/',
-        INITIATE_MTN_PAYMENT: '/reservations/reservations/initiate_mtn_payment/',
-        MTN_PAYMENT_STATUS: '/reservations/reservations/mtn_payment_status/',
+        APPROVE_PAYMENT: (id) => `/reservations/reservations/${id}/approve_payment/`,
     },
     
     // Inquiry endpoints
