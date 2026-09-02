@@ -65,20 +65,20 @@ const Navbar = () => {
                         </>
                     ) : (
                         <>
-                            {currentUser.role === 'admin' && (
+                            {['admin', 'caretaker'].includes(currentUser.role) && (
                                 <li>
                                     <Link 
                                         to="/admin" 
                                         className={`nav-item nav-btn-solid ${isActive('/admin')}`} 
                                         style={{ backgroundColor: '#000', color: '#fff', padding: '0.5rem 1rem', borderRadius: '4px' }}
                                     >
-                                        Admin Panel
+                                        {currentUser.role === 'admin' ? 'Admin Panel' : 'My Hostel'}
                                     </Link>
                                 </li>
                             )}
                             {who && (
                                 <li className="nav-item" style={{ color: '#475569', fontSize: '0.9rem' }}>
-                                    {currentUser.role === 'admin' ? 'Admin' : 'Hi'}, {who}
+                                    {currentUser.role === 'admin' ? 'Admin' : currentUser.role === 'caretaker' ? 'Caretaker' : 'Hi'}, {who}
                                 </li>
                             )}
                             <li>

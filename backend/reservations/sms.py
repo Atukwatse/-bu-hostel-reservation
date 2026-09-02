@@ -170,3 +170,80 @@ def send_caretaker_cancellation_notifications(reservation):
     whatsapp_ok = send_whatsapp_message(caretaker_phone, message)
 
     return {'sms': sms_ok, 'whatsapp': whatsapp_ok}
+
+
+def _admin_phone_for(hostel):
+    """Return the phone number of the hostel's admin user, falling back to caretaker_phone."""
+    if hostel.admin_user and hostel.admin_user.phone:
+        return hostel.admin_user.phone
+    return hostel.caretaker_phone
+
+
+def send_admin_new_booking_notification(reservation):
+    """Notify the hostel's admin (via SMS + WhatsApp) that a room has been booked."""
+    hostel = reservation.hostel
+    admin_phone = _admin_phone_for(hostel)
+    user = reservation.user
+
+    message = (
+        f"New Booking Alert\n\n"
+        f"A student has booked a room at {hostel.name}.\n\n"
+        f"Booking Details:\n"
+        f"Code: {reservation.reservation_code}\n"
+        f"Student: {user.name}\n"
+        f"Student Phone: {user.phone}\n"
+        f"Room: {reservation.room.room_number if reservation.room else 'Not assigned'}\n"
+        f"Check-in: {reservation.check_in_date.strftime('%d/%m/%Y') if reservation.check_in_date else 'N/A'}\n"
+        f"Amount: UGX {reservation.total_amount:,.0f}\n\n"
+        f"Please review and confirm the booking.\n\n"
+        f"- BU Hostel Management"
+    )
+
+    sms_ok = send_sms_message(admin_phone, message)
+    whatsapp_ok = send_whatsapp_message(admin_phone, message)
+    return {'sms': sms_ok, 'whatsapp': whatsapp_ok}
+
+
+def send_student_booking_notification(reservation):
+    """Notify the student that their booking has been received."""
+    user = reservation.user
+    phone = user.phone
+
+    message = (
+        f"Dear {user.first_name or 'Student'},\n\n"
+        f"Thank you! Your booking request has been received.\n\n"
+        f"Booking Details:\n"
+        f"Code: {reservation.reservation_code}\n"
+        f"Hostel: {reservation.hostel.name}\n"
+        f"Room: {reservation.room.room_number if reservation.room else 'Not assigned'}\n"
+        f"Check-in: {reservation.check_in_date.strftime('%d/%m/%Y') if reservation.check_in_date else 'N/A'}\n\n"
+        f"Your booking is pending review. You will be notified once it is confirmed.\n\n"
+        f"- BU Hostel Management"
+    )
+
+    sms_ok = send_sms_message(phone, message)
+    whatsapp_ok = send_whatsapp_message(phone, message)
+    return {'sms': sms_ok, 'whatsapp': whatsapp_ok}
+
+
+def send_student_booking_confirmed_notification(reservation):
+    """Notify the student that their booking has been confirmed."""
+    user = reservation.user
+    phone = user.phone
+
+    message = (
+        f"Dear {user.first_name or 'Student'},\n\n"
+        f"Good news! Your booking has been CONFIRMED.\n\n"
+        f"Booking Details:\n"
+        f"Code: {reservation.reservation_code}\n"
+        f"Hostel: {reservation.hostel.name}\n"
+        f"Room: {reservation.room.room_number if reservation.room else 'Not assigned'}\n"
+        f"Check-in: {reservation.check_in_date.strftime('%d/%m/%Y') if reservation.check_in_date else 'N/A'}\n\n"
+        f"Your room has been reserved for you. Welcome!\n\n"
+        f"If you have any questions, contact the administration.\n\n"
+        f"- BU Hostel Management"
+    )
+
+    sms_ok = send_sms_message(phone, message)
+    whatsapp_ok = send_whatsapp_message(phone, message)
+    return {'sms': sms_ok, 'whatsapp': whatsapp_ok}

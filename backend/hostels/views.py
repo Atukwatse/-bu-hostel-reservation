@@ -31,6 +31,44 @@ class HostelViewSet(viewsets.ModelViewSet):
             self.permission_classes = [IsAuthenticated]
         return super().get_permissions()
 
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def my_hostel(self, request):
+        """Return the access scope for the logged-in user.
+
+        - Admin (dean of students): sees everything, is never scoped.
+        - Caretaker with a linked hostel: returns that single hostel.
+        - Caretaker without a hostel: returns the hostel list for selection.
+        """
+        user = request.user
+        if user.role == 'admin':
+            hostels = self.get_queryset()
+            serializer = HostelListSerializer(hostels, many=True, context={'request': request})
+            return Response({'is_admin': True, 'hostel': None, 'single': False, 'hostels': serializer.data})
+        hostel = getattr(user, 'managed_hostel', None)
+        if hostel is not None:
+            serializer = HostelSerializer(hostel, context={'request': request})
+            return Response({'is_admin': False, 'hostel': serializer.data, 'single': True})
+        hostels = self.get_queryset()
+        serializer = HostelListSerializer(hostels, many=True, context={'request': request})
+        return Response({'is_admin': False, 'hostel': None, 'single': False, 'hostels': serializer.data})
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def select_admin(self, request, pk=None):
+        """Link the logged-in caretaker to this hostel (caretaker self-assignment)."""
+        user = request.user
+        if user.role != 'caretaker':
+            return Response(
+                {'error': 'Only caretakers can select a hostel to manage'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        # Remove the user from any other hostel first (OneToOne)
+        Hostel.objects.filter(admin_user=user).update(admin_user=None)
+
+        hostel = self.get_object()
+        hostel.admin_user = user
+        hostel.save(update_fields=['admin_user'])
+        return Response({'message': 'Hostel assigned successfully', 'hostel': HostelSerializer(hostel, context={'request': request}).data})
+
     @action(detail=True, methods=['get'])
     def rooms(self, request, pk=None):
         """Get all rooms for a specific hostel"""

@@ -39,7 +39,7 @@ const Login = () => {
                 // Use the user data from login response if /me/ fails
             }
             localStorage.setItem('currentUser', JSON.stringify(user));
-            window.location.href = role === 'admin' ? '/admin' : '/';
+            window.location.href = ['admin', 'caretaker'].includes(role) ? '/admin' : '/';
         } catch (error) {
             console.error('Login error details:', error);
             const errorMsg = error.message || 'Check your credentials and try again.';
@@ -64,6 +64,7 @@ const Login = () => {
                 <form onSubmit={handleLogin} className="vertical-form">
                     <div className="auth-tabs">
                         <button type="button" className={`auth-tab ${role === 'student' ? 'active' : ''}`} onClick={() => setRole('student')}>Student</button>
+                        <button type="button" className={`auth-tab ${role === 'caretaker' ? 'active' : ''}`} onClick={() => setRole('caretaker')}>Caretaker</button>
                         <button type="button" className={`auth-tab ${role === 'admin' ? 'active' : ''}`} onClick={() => setRole('admin')}>Admin</button>
                     </div>
 

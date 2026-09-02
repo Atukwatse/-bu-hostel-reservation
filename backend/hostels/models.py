@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 
@@ -32,6 +33,13 @@ class Hostel(models.Model):
     )
     reviews = models.PositiveIntegerField(default=0)
     caretaker_phone = models.CharField(max_length=20)
+    admin_user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='managed_hostel'
+    )
     rooms_status = models.CharField(
         max_length=20, 
         choices=ROOM_STATUS_CHOICES, 

@@ -9,9 +9,15 @@ import logging
 import random
 import string as _stringutil
 from .models import Reservation, Payment, Inquiry, WaitingList
-from .emails import send_cancellation_email
+from .emails import send_cancellation_email, send_booking_received_email, send_booking_confirmed_email
 from .mobile_money import parse_mobile_money_message
-from .sms import send_user_cancellation_notifications, send_caretaker_cancellation_notifications
+from .sms import (
+    send_user_cancellation_notifications,
+    send_caretaker_cancellation_notifications,
+    send_admin_new_booking_notification,
+    send_student_booking_notification,
+    send_student_booking_confirmed_notification,
+)
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -25,6 +31,16 @@ def _generate_mtn_transaction_id():
     letter = random.choice(_stringutil.ascii_uppercase)
     digits = ''.join(random.choices(_stringutil.digits, k=5))
     return f'MP{now:%y%m%d}.{now:%H%M}.{letter}{digits}'
+
+
+def _can_manage_reservation(user, reservation):
+    """Admins can manage any reservation; caretakers only their own hostel's."""
+    if user.role == 'admin':
+        return True
+    if user.role == 'caretaker':
+        hostel = getattr(user, 'managed_hostel', None)
+        return hostel is not None and reservation.hostel_id == hostel.id
+    return False
 
 
 from .serializers import (
@@ -44,13 +60,29 @@ class ReservationViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if self.request.user.role == 'admin':
             return Reservation.objects.all()
-        else:
-            return Reservation.objects.filter(user=self.request.user)
+        elif self.request.user.role == 'caretaker':
+            hostel = getattr(self.request.user, 'managed_hostel', None)
+            if hostel is not None:
+                return Reservation.objects.filter(hostel=hostel)
+            return Reservation.objects.none()
+        return Reservation.objects.filter(user=self.request.user)
 
     def get_serializer_class(self):
         if self.action == 'create':
             return ReservationCreateSerializer
         return ReservationSerializer
+
+    def perform_create(self, serializer):
+        reservation = serializer.save()
+
+        # Notify the hostel admin that a new booking has been made
+        send_admin_new_booking_notification(reservation)
+
+        # Notify the student that their booking request was received (email + SMS/WhatsApp)
+        send_booking_received_email(reservation)
+        send_student_booking_notification(reservation)
+
+        return reservation
 
     @action(detail=False, methods=['get'])
     def my_reservations(self, request):
@@ -100,13 +132,13 @@ class ReservationViewSet(viewsets.ModelViewSet):
         the app. The admin verifies the payment and approves it here, which
         auto-generates the transaction ID in MTN format.
         """
-        if request.user.role != 'admin':
+        reservation = self.get_object()
+        if not _can_manage_reservation(request.user, reservation):
             return Response(
-                {'error': 'Only admins can approve mobile money payments'},
+                {'error': 'Only admins or the hostel caretaker can approve mobile money payments'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        reservation = self.get_object()
         if reservation.status != 'pending':
             return Response(
                 {'error': 'Only pending reservations can have their payment approved'},
@@ -154,6 +186,10 @@ class ReservationViewSet(viewsets.ModelViewSet):
                 reservation.room.current_occupancy += 1
                 reservation.room.save()
 
+        # Notify the student that their booking has been confirmed
+        send_booking_confirmed_email(reservation)
+        send_student_booking_confirmed_notification(reservation)
+
         return Response({
             'message': 'Payment approved. Transaction ID generated successfully.',
             'transaction_id': transaction_id,
@@ -163,14 +199,14 @@ class ReservationViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def confirm(self, request, pk=None):
-        """Confirm a reservation (admin only)"""
-        if request.user.role != 'admin':
+        """Confirm a reservation (admin or that hostel's caretaker)"""
+        reservation = self.get_object()
+        if not _can_manage_reservation(request.user, reservation):
             return Response(
-                {'error': 'Only admins can confirm reservations'},
+                {'error': 'Only admins or the hostel caretaker can confirm reservations'},
                 status=status.HTTP_403_FORBIDDEN
             )
-        
-        reservation = self.get_object()
+
         if reservation.status != 'pending':
             return Response(
                 {'error': 'Only pending reservations can be confirmed'},
@@ -204,6 +240,10 @@ class ReservationViewSet(viewsets.ModelViewSet):
         if reservation.room:
             reservation.room.current_occupancy += 1
             reservation.room.save()
+
+        # Notify the student that their booking has been confirmed
+        send_booking_confirmed_email(reservation)
+        send_student_booking_confirmed_notification(reservation)
         
         return Response({'message': 'Reservation and payments confirmed successfully'})
 

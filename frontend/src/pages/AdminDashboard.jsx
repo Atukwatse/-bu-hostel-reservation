@@ -18,6 +18,17 @@ const AdminDashboard = () => {
     const [editingRoom, setEditingRoom] = useState(null);
     const [editingCaretaker, setEditingCaretaker] = useState(null);
     const [selectedManageHostel, setSelectedManageHostel] = useState('');
+    const [managedHostel, setManagedHostel] = useState(null);
+    const [hostelScopeId, setHostelScopeId] = useState(null);
+    const [needsHostelSelection, setNeedsHostelSelection] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(() => {
+        try {
+            const u = JSON.parse(localStorage.getItem('currentUser') || 'null');
+            return !u || u.role === 'admin';
+        } catch {
+            return true;
+        }
+    });
     const [loading, setLoading] = useState(false);
     const [hostelSearchTerm, setHostelSearchTerm] = useState('');
     const [roomSearchTerm, setRoomSearchTerm] = useState('');
@@ -29,6 +40,34 @@ const AdminDashboard = () => {
     const fetchAdminData = async ({ withSpinner = true } = {}) => {
         if (withSpinner) setLoading(true);
         try {
+            // Determine the admin's hostel scope
+            let scopeId = null;
+            let managed = null;
+            try {
+                const myHostelRes = await api.get(API_CONFIG.HOSTELS.MY_HOSTEL);
+                if (myHostelRes && myHostelRes.is_admin && myHostelRes.is_admin !== false) {
+                    // Dean of students: full access to everything, no hostel scope
+                    managed = null;
+                    scopeId = null;
+                    setIsAdmin(true);
+                    setNeedsHostelSelection(false);
+                } else if (myHostelRes && myHostelRes.hostel) {
+                    managed = myHostelRes.hostel;
+                    scopeId = managed.id;
+                    setIsAdmin(false);
+                    setNeedsHostelSelection(false);
+                } else if (myHostelRes && myHostelRes.single === false) {
+                    managed = null;
+                    scopeId = null;
+                    setIsAdmin(false);
+                    setNeedsHostelSelection(true);
+                }
+            } catch (e) {
+                console.error('Failed to load my_hostel:', e);
+            }
+            setManagedHostel(managed);
+            setHostelScopeId(scopeId);
+
             // Fetch real data from APIs
             const [hostelsRes, usersRes, reservationsRes] = await Promise.all([
                 api.get(API_CONFIG.HOSTELS.LIST),
@@ -36,26 +75,23 @@ const AdminDashboard = () => {
                 api.get(API_CONFIG.RESERVATIONS.LIST)
             ]);
 
-            const allHostels = hostelsRes.results || hostelsRes;
+            let allHostels = hostelsRes.results || hostelsRes;
+            if (scopeId) {
+                allHostels = allHostels.filter(h => parseInt(h.id, 10) === parseInt(scopeId, 10));
+            }
             setHostels(allHostels.map(hostel => ({
                 ...hostel,
                 occupancy: (hostel.total_rooms > 0) ? `${hostel.available_rooms}/${hostel.total_rooms}` : hostel.occupancy || 'N/A',
                 status: hostel.rooms_status || 'Available'
             })));
 
-            const allUsers = usersRes.results || usersRes;
-            const withDisplayName = (u) => ({ ...u, name: displayUserName(u) });
-            const students = allUsers
-                .filter(u => u.role !== 'caretaker' && u.role !== 'admin')
-                .map(withDisplayName);
-            setUsers(students);
-
-            const filteredCaretakers = allUsers
-                .filter(u => u.role === 'caretaker')
-                .map(withDisplayName);
-            setCaretakers(filteredCaretakers);
-
-            const allReservations = reservationsRes.results || reservationsRes;
+            let allReservations = reservationsRes.results || reservationsRes;
+            if (scopeId) {
+                allReservations = allReservations.filter(res =>
+                    parseInt(res.hostel, 10) === parseInt(scopeId, 10) ||
+                    (res.hostel_id && parseInt(res.hostel_id, 10) === parseInt(scopeId, 10))
+                );
+            }
             setReservations(allReservations.map(res => ({
                 ...res,
                 student: res.user_name || displayUserName(res.user) || 'Unknown',
@@ -63,6 +99,26 @@ const AdminDashboard = () => {
                 date: res.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
                 lastUpdated: res.updated_at || res.created_at || ''
             })));
+
+            const allUsers = usersRes.results || usersRes;
+            const withDisplayName = (u) => ({ ...u, name: displayUserName(u) });
+            let students = allUsers
+                .filter(u => u.role !== 'caretaker' && u.role !== 'admin')
+                .map(withDisplayName);
+            if (scopeId) {
+                // Caretakers only see students who booked at their hostel
+                const scopedUserIds = new Set(allReservations.map(r => {
+                    const rUserId = (r.user && typeof r.user === 'object') ? r.user.id : r.user;
+                    return rUserId !== undefined && rUserId !== null ? Number(rUserId) : null;
+                }).filter(Number.isFinite));
+                students = students.filter(s => scopedUserIds.has(Number(s.id)));
+            }
+            setUsers(students);
+
+            const filteredCaretakers = allUsers
+                .filter(u => u.role === 'caretaker')
+                .map(withDisplayName);
+            setCaretakers(filteredCaretakers);
 
             setStats({
                 totalHostels: allHostels.length || 0,
@@ -74,15 +130,25 @@ const AdminDashboard = () => {
         } catch (error) {
             console.error('Failed to fetch admin data:', error);
             // Fallback to mock data if API fails
-            setHostels([
-                { id: 1, name: "Bensdorf Hostel", type: "university", occupancy: "45/60", price: "UGX 750,000 /sem", status: "Available" },
-                { id: 2, name: "SL Hostel", type: "university", occupancy: "85/100", price: "UGX 650,000 /sem", status: "Available" }
-            ]);
-            setStats({ totalHostels: 2, students: 0, reservations: 0, available: 2 });
+            const fallbackHostels = scopeId
+                ? [{ id: scopeId, name: "Bensdorf Hostel", type: "university", occupancy: "45/60", price: "UGX 750,000 /sem", status: "Available" }]
+                : [
+                    { id: 1, name: "Bensdorf Hostel", type: "university", occupancy: "45/60", price: "UGX 750,000 /sem", status: "Available" },
+                    { id: 2, name: "SL Hostel", type: "university", occupancy: "85/100", price: "UGX 650,000 /sem", status: "Available" }
+                ];
+            setHostels(fallbackHostels);
+            setStats({ totalHostels: fallbackHostels.length, students: 0, reservations: 0, available: fallbackHostels.length });
         } finally {
             if (withSpinner) setLoading(false);
         }
     };
+
+    // Auto-lock room management to the admin's hostel if scoped
+    useEffect(() => {
+        if (hostelScopeId) {
+            setSelectedManageHostel(String(hostelScopeId));
+        }
+    }, [hostelScopeId]);
 
     useEffect(() => {
         if (!adminDataBootstrapped.current) {
@@ -136,6 +202,17 @@ const AdminDashboard = () => {
     const handleEditHostel = (hostel) => {
         setEditingHostel(hostel);
         setShowHostelModal(true);
+    };
+
+    const handleAssignSelfHostel = async (hostelId) => {
+        try {
+            await api.post(API_CONFIG.HOSTELS.SELECT_ADMIN(hostelId), {});
+            await fetchAdminData({ withSpinner: false });
+            alert('Hostel assigned. You are now managing this hostel.');
+        } catch (error) {
+            console.error('Failed to assign hostel:', error);
+            alert(`Failed to assign hostel: ${error.message}`);
+        }
     };
 
     const handleDeleteHostel = async (hostelId) => {
@@ -800,7 +877,8 @@ const AdminDashboard = () => {
                                 <select 
                                     value={selectedManageHostel} 
                                     onChange={(e) => setSelectedManageHostel(e.target.value)}
-                                    style={{ width: '100%', maxWidth: '350px', padding: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '1rem' }}
+                                    disabled={!!hostelScopeId}
+                                    style={{ width: '100%', maxWidth: '350px', padding: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '1rem', ...(hostelScopeId ? { background: '#f1f5f9', cursor: 'not-allowed' } : {}) }}
                                 >
                                     <option value="">-- Choose a Hostel --</option>
                                     {hostels.map(h => (
@@ -1340,26 +1418,86 @@ const AdminDashboard = () => {
 
     return (
         <section id="admin-panel" className="page-section active" style={{ padding: 0 }}>
+            {needsHostelSelection && (
+                <div style={{ padding: '3rem 1.5rem', maxWidth: '900px', margin: '0 auto' }}>
+                    <div style={{ background: 'linear-gradient(90deg, #0f172a, #1e3a8a)', color: '#fff', padding: '2rem', borderRadius: '12px', marginBottom: '1.5rem', textAlign: 'center' }}>
+                        <div style={{ fontSize: '3rem' }}>🏢</div>
+                        <h2 style={{ margin: '0.5rem 0 0.25rem' }}>Select Your Hostel</h2>
+                        <p style={{ margin: 0, color: '#cbd5e1' }}>Please choose the hostel you manage so you can view its details, bookings, and receive SMS notifications.</p>
+                    </div>
+                    <div className="admin-dashboard-cards" style={{ display: 'grid', gap: '1rem' }}>
+                        {hostels.length === 0 && (
+                            <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b', background: '#fff', borderRadius: '10px', border: '1px dashed #cbd5e1' }}>Loading hostels...</div>
+                        )}
+                        {hostels.map(h => (
+                            <div key={h.id} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                                {h.image ? (
+                                    <img src={h.image} alt={h.name} style={{ width: '70px', height: '70px', objectFit: 'cover', borderRadius: '8px' }} />
+                                ) : (
+                                    <div style={{ width: '70px', height: '70px', background: '#f1f5f9', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem' }}>🏢</div>
+                                )}
+                                <div style={{ flex: 1 }}>
+                                    <h3 style={{ margin: 0, color: '#1e293b' }}>{h.name}</h3>
+                                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                                        {h.type} · {h.gender} · 📞 {h.caretaker_phone}
+                                    </p>
+                                </div>
+                                <button
+                                    className="primary-btn"
+                                    style={{ whiteSpace: 'nowrap' }}
+                                    onClick={() => handleAssignSelfHostel(h.id)}
+                                >
+                                    Select & Manage
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+            {!needsHostelSelection && (
             <div className="admin-layout">
                 <aside className="admin-sidebar">
                     <div className="admin-header">
-                        <h2>ADMIN PANEL</h2>
+                        <h2>{isAdmin ? 'ADMIN PANEL' : 'HOSTEL PANEL'}</h2>
                     </div>
                     <ul className="admin-nav" style={{ listStyle: 'none', padding: 0 }}>
                         <li><button className={`admin-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Dashboard</button></li>
-                        <li><button className={`admin-nav-item ${activeTab === 'manage-hostels' ? 'active' : ''}`} onClick={() => setActiveTab('manage-hostels')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Manage Hostels</button></li>
+                        {isAdmin && (
+                            <li><button className={`admin-nav-item ${activeTab === 'manage-hostels' ? 'active' : ''}`} onClick={() => setActiveTab('manage-hostels')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Manage Hostels</button></li>
+                        )}
                         <li><button className={`admin-nav-item ${activeTab === 'manage-rooms' ? 'active' : ''}`} onClick={() => setActiveTab('manage-rooms')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Manage Rooms</button></li>
-                        <li><button className={`admin-nav-item ${activeTab === 'caretakers' ? 'active' : ''}`} onClick={() => setActiveTab('caretakers')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Caretakers</button></li>
+                        {isAdmin && (
+                            <li><button className={`admin-nav-item ${activeTab === 'caretakers' ? 'active' : ''}`} onClick={() => setActiveTab('caretakers')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Caretakers</button></li>
+                        )}
                         <li><button className={`admin-nav-item ${activeTab === 'reservations' ? 'active' : ''}`} onClick={() => setActiveTab('reservations')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Reservations</button></li>
                         <li><button className={`admin-nav-item ${activeTab === 'students' ? 'active' : ''}`} onClick={() => setActiveTab('students')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Students</button></li>
                     </ul>
                 </aside>
                 
                 <div className="admin-main">
+                    {managedHostel && (
+                        <div style={{
+                            background: 'linear-gradient(90deg, #0f172a, #1e3a8a)',
+                            color: '#fff', padding: '1rem 1.5rem', borderRadius: '10px',
+                            marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
+                        }}>
+                            <span style={{ fontSize: '1.6rem' }}>🏢</span>
+                            <div>
+                                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#93c5fd' }}>Managing Hostel</div>
+                                <div style={{ fontSize: '1.15rem', fontWeight: 700 }}>{managedHostel.name}</div>
+                            </div>
+                            {managedHostel.admin_user_phone && (
+                                <div style={{ marginLeft: 'auto', fontSize: '0.85rem', color: '#93c5fd', textAlign: 'right' }}>
+                                    📞 {managedHostel.admin_user_phone}
+                                </div>
+                            )}
+                        </div>
+                    )}
                     {renderTabContent()}
                 </div>
             </div>
-            
+            )}
+
             {/* Modals */}
             <HostelModal />
             <RoomModal />

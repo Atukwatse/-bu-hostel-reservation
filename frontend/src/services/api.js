@@ -17,6 +17,8 @@ export const API_CONFIG = {
         LIST: '/hostels/hostels/',
         DETAIL: (id) => `/hostels/hostels/${id}/`,
         AVAILABLE: '/hostels/hostels/available/',
+        MY_HOSTEL: '/hostels/hostels/my_hostel/',
+        SELECT_ADMIN: (id) => `/hostels/hostels/${id}/select_admin/`,
         ROOMS: (id) => `/hostels/hostels/${id}/rooms/`,
         REVIEWS: (id) => `/hostels/hostels/${id}/reviews/`,
         ADD_REVIEW: (id) => `/hostels/hostels/${id}/add_review/`,

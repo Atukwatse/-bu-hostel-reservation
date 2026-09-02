@@ -42,12 +42,15 @@ class HostelSerializer(serializers.ModelSerializer):
     average_rating = serializers.ReadOnlyField()
     total_rooms = serializers.SerializerMethodField()
     available_rooms = serializers.SerializerMethodField()
+    admin_user_name = serializers.CharField(source='admin_user.name', read_only=True)
+    admin_user_phone = serializers.CharField(source='admin_user.phone', read_only=True)
 
     class Meta:
         model = Hostel
         fields = [
             'id', 'name', 'type', 'price', 'gender', 'occupancy', 'rating',
-            'reviews', 'average_rating', 'caretaker_phone', 'rooms_status',
+            'reviews', 'average_rating', 'caretaker_phone', 'admin_user',
+            'admin_user_name', 'admin_user_phone', 'rooms_status',
             'image', 'description', 'facilities', 'location', 'images',
             'rooms', 'total_rooms', 'available_rooms', 'hostel_reviews', 'created_at', 'updated_at'
         ]
@@ -63,12 +66,15 @@ class HostelListSerializer(serializers.ModelSerializer):
     average_rating = serializers.ReadOnlyField()
     total_rooms = serializers.SerializerMethodField()
     available_rooms = serializers.SerializerMethodField()
+    admin_user_name = serializers.CharField(source='admin_user.name', read_only=True)
+    admin_user_phone = serializers.CharField(source='admin_user.phone', read_only=True)
 
     class Meta:
         model = Hostel
         fields = [
             'id', 'name', 'type', 'price', 'gender', 'occupancy', 'rating',
-            'average_rating', 'caretaker_phone', 'rooms_status', 'image',
+            'average_rating', 'caretaker_phone', 'admin_user',
+            'admin_user_name', 'admin_user_phone', 'rooms_status', 'image',
             'location', 'total_rooms', 'available_rooms', 'created_at'
         ]
 
