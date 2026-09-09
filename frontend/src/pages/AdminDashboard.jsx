@@ -10,6 +10,7 @@ const AdminDashboard = () => {
     const [users, setUsers] = useState([]);
     const [reservations, setReservations] = useState([]);
     const [caretakers, setCaretakers] = useState([]);
+    const [subscriptions, setSubscriptions] = useState([]);
     const [stats, setStats] = useState({ totalHostels: 0, students: 0, reservations: 0, available: 0 });
     const [showHostelModal, setShowHostelModal] = useState(false);
     const [showRoomModal, setShowRoomModal] = useState(false);
@@ -69,11 +70,19 @@ const AdminDashboard = () => {
             setHostelScopeId(scopeId);
 
             // Fetch real data from APIs
-            const [hostelsRes, usersRes, reservationsRes] = await Promise.all([
+            const [hostelsRes, usersRes, reservationsRes, subscriptionsRes] = await Promise.all([
                 api.get(API_CONFIG.HOSTELS.LIST),
                 api.get('/users/users/'),
-                api.get(API_CONFIG.RESERVATIONS.LIST)
+                api.get(API_CONFIG.RESERVATIONS.LIST),
+                api.get(API_CONFIG.SUBSCRIPTIONS.LIST).catch(() => ({ results: [] }))
             ]);
+
+            const allSubscriptions = subscriptionsRes.results || subscriptionsRes || [];
+            setSubscriptions(allSubscriptions.map(sub => ({
+                ...sub,
+                caretakerName: sub.caretaker_name || displayUserName(sub.caretaker) || 'Unknown',
+                hostelName: sub.hostel_name || '—'
+            })));
 
             let allHostels = hostelsRes.results || hostelsRes;
             if (scopeId) {
@@ -370,6 +379,19 @@ const AdminDashboard = () => {
             } catch (error) {
                 console.error('Error approving payment:', error);
                 alert(`Failed to approve payment: ${error.message}`);
+            }
+        }
+    };
+
+    const handleActivateSubscription = async (subscriptionId) => {
+        if (window.confirm('Confirm this caretaker has paid the subscription fee? Activating records their payment and keeps their hostel on the site.')) {
+            try {
+                await api.post(API_CONFIG.SUBSCRIPTIONS.ACTIVATE(subscriptionId), {});
+                alert('Subscription activated successfully. The caretaker\u2019s hostel stays listed.');
+                fetchAdminData({ withSpinner: false });
+            } catch (error) {
+                console.error('Error activating subscription:', error);
+                alert(`Failed to activate subscription: ${error.message}`);
             }
         }
     };
@@ -683,6 +705,7 @@ const AdminDashboard = () => {
                     <table className="admin-table">
                         <thead>
                             <tr>
+                                <th>Passport</th>
                                 <th>Reservation Code</th>
                                 <th>Student</th>
                                 <th>Hostel</th>
@@ -698,6 +721,20 @@ const AdminDashboard = () => {
                         <tbody>
                             {reservations.filter(res => res.reservation_code.toLowerCase().includes(reservationSearchTerm.toLowerCase()) || res.student.toLowerCase().includes(reservationSearchTerm.toLowerCase())).map(reservation => (
                                 <tr key={reservation.id}>
+                                    <td>
+                                        {reservation.passport_photo ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => window.open(reservation.passport_photo, '_blank')}
+                                                title="Click to view passport photo"
+                                                style={{ background: 'none', border: 'none', padding: 0, cursor: 'zoom-in' }}
+                                            >
+                                                <img src={reservation.passport_photo} alt="Passport" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '50%', border: '2px solid #cbd5e1' }} />
+                                            </button>
+                                        ) : (
+                                            <div style={{ width: '40px', height: '40px', background: '#e2e8f0', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', color: '#94a3b8' }}>No Photo</div>
+                                        )}
+                                    </td>
                                     <td>{reservation.reservation_code}</td>
                                     <td>{reservation.student}</td>
                                     <td>{reservation.hostel}</td>
@@ -776,7 +813,7 @@ const AdminDashboard = () => {
                             ))}
                             {reservations.length === 0 && (
                                 <tr>
-                                    <td colSpan="10" style={{textAlign: 'center', color: '#64748b'}}>No reservations found</td>
+                                    <td colSpan="11" style={{textAlign: 'center', color: '#64748b'}}>No reservations found</td>
                                 </tr>
                             )}
                         </tbody>
@@ -830,6 +867,82 @@ const AdminDashboard = () => {
                                 {caretakers.length === 0 && (
                                     <tr>
                                         <td colSpan="5" style={{textAlign: 'center', color: '#64748b'}}>No caretakers found</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            );
+        } else if (activeTab === 'subscriptions') {
+            const activeSubs = subscriptions.filter(s => s.status === 'active');
+            const pendingSubs = subscriptions.filter(s => s.status === 'pending');
+            const totalRevenue = subscriptions
+                .filter(s => s.status === 'active')
+                .reduce((sum, s) => sum + (parseFloat(s.amount_paid) || 0), 0);
+
+            return (
+                <div className="admin-tab-content active">
+                    <div className="admin-top-bar">
+                        <h2>Hostel Subscriptions</h2>
+                        <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem', color: '#64748b' }}>
+                            <span>Total Revenue: <strong style={{ color: '#166534' }}>UGX {totalRevenue.toLocaleString()}</strong></span>
+                            <span>Active: <strong style={{ color: '#166534' }}>{activeSubs.length}</strong></span>
+                            <span>Pending: <strong style={{ color: '#b45309' }}>{pendingSubs.length}</strong></span>
+                        </div>
+                    </div>
+                    <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1.25rem', fontSize: '0.88rem', color: '#92400e', lineHeight: 1.5 }}>
+                        Caretaker hostels are shown on the site immediately. Each caretaker has <strong>4 days</strong> to pay the subscription fee. If a
+                        pending subscription is not activated within that grace period, the hostel is automatically removed from the site. Activate
+                        pending subscriptions once you have confirmed the caretaker\u2019s payment.
+                    </div>
+                    {loading ? (
+                        <div style={{ textAlign: 'center', padding: '2rem' }}>Loading...</div>
+                    ) : (
+                        <table className="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Caretaker</th>
+                                    <th>Hostel</th>
+                                    <th>Amount</th>
+                                    <th>Paid Via</th>
+                                    <th>Transaction ID</th>
+                                    <th>Valid Until</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {subscriptions.map(sub => (
+                                    <tr key={sub.id}>
+                                        <td>{sub.caretakerName}</td>
+                                        <td>{sub.hostelName}</td>
+                                        <td>UGX {Number(sub.amount_paid).toLocaleString()}</td>
+                                        <td style={{ textTransform: 'capitalize' }}>{sub.paid_via?.replace(/_/g, ' ')}</td>
+                                        <td>{sub.transaction_id || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>None</span>}</td>
+                                        <td>{sub.end_date}</td>
+                                        <td>
+                                            <span className={`status-badge ${sub.status}`}>{sub.status}</span>
+                                        </td>
+                                        <td>
+                                            {sub.status === 'pending' && (
+                                                <button
+                                                    className="btn-confirm"
+                                                    style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '0.25rem 0.5rem', borderRadius: '4px', cursor: 'pointer' }}
+                                                    onClick={() => handleActivateSubscription(sub.id)}
+                                                >
+                                                    Activate
+                                                </button>
+                                            )}
+                                            {sub.status === 'active' && (
+                                                <span style={{ color: '#166534', fontSize: '0.85rem' }}>Active ✓</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                                {subscriptions.length === 0 && (
+                                    <tr>
+                                        <td colSpan="8" style={{ textAlign: 'center', color: '#64748b' }}>No subscriptions found</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -1462,12 +1575,13 @@ const AdminDashboard = () => {
                     </div>
                     <ul className="admin-nav" style={{ listStyle: 'none', padding: 0 }}>
                         <li><button className={`admin-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Dashboard</button></li>
-                        {isAdmin && (
-                            <li><button className={`admin-nav-item ${activeTab === 'manage-hostels' ? 'active' : ''}`} onClick={() => setActiveTab('manage-hostels')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Manage Hostels</button></li>
-                        )}
+                        <li><button className={`admin-nav-item ${activeTab === 'manage-hostels' ? 'active' : ''}`} onClick={() => setActiveTab('manage-hostels')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Manage Hostels</button></li>
                         <li><button className={`admin-nav-item ${activeTab === 'manage-rooms' ? 'active' : ''}`} onClick={() => setActiveTab('manage-rooms')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Manage Rooms</button></li>
                         {isAdmin && (
                             <li><button className={`admin-nav-item ${activeTab === 'caretakers' ? 'active' : ''}`} onClick={() => setActiveTab('caretakers')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Caretakers</button></li>
+                        )}
+                        {isAdmin && (
+                            <li><button className={`admin-nav-item ${activeTab === 'subscriptions' ? 'active' : ''}`} onClick={() => setActiveTab('subscriptions')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Hostel Subscriptions</button></li>
                         )}
                         <li><button className={`admin-nav-item ${activeTab === 'reservations' ? 'active' : ''}`} onClick={() => setActiveTab('reservations')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Reservations</button></li>
                         <li><button className={`admin-nav-item ${activeTab === 'students' ? 'active' : ''}`} onClick={() => setActiveTab('students')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Students</button></li>

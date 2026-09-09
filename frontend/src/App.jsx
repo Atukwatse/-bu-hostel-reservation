@@ -7,6 +7,8 @@ import Hostels from './pages/Hostels';
 import Inquiry from './pages/Inquiry';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import CaretakerRegister from './pages/CaretakerRegister';
+import Subscribe from './pages/Subscribe';
 import Profile from './pages/Profile';
 import AdminDashboard from './pages/AdminDashboard';
 import RatingAndReview from './pages/RatingAndReview';
@@ -22,6 +24,8 @@ function App() {
           <Route path="/inquiry" element={<Inquiry />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/register/caretaker" element={<CaretakerRegister />} />
+          <Route path="/subscribe" element={<Subscribe />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/reviews" element={<RatingAndReview />} />

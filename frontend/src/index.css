@@ -387,6 +387,16 @@ main {
     background-color: #f1f5f9;
 }
 
+.hero-btn.add-hostel {
+    background-color: #2563eb;
+    color: #ffffff;
+    border: 1px solid #2563eb;
+}
+
+.hero-btn.add-hostel:hover {
+    background-color: #1d4ed8;
+}
+
 /* Stats Container (inside hero or pulling up) */
 .stats-container {
     max-width: 1000px;

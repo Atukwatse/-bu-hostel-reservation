@@ -27,6 +27,8 @@ const Hostels = () => {
     const [mmAmount, setMmAmount] = useState('');
     const [mmSent, setMmSent] = useState(false);
     const [mmError, setMmError] = useState('');
+    const [acceptedTerms, setAcceptedTerms] = useState(false);
+    const [bookingTermsAccepted, setBookingTermsAccepted] = useState(false);
     const bookingDatePickerRef = useRef(null);
 
     useEffect(() => {
@@ -115,6 +117,8 @@ const Hostels = () => {
         setSelectedHostel(h);
         setSelectedRoom(null); // Reset selected room when opening directly
         resetMobileMoneyFlow();
+        setAcceptedTerms(false);
+        setBookingTermsAccepted(false);
         setReservationModal(true);
     };
 
@@ -127,6 +131,8 @@ const Hostels = () => {
         setSelectedHostel(h);
         setSelectedRoom(roomName);
         resetMobileMoneyFlow();
+        setAcceptedTerms(false);
+        setBookingTermsAccepted(false);
         setViewRoomsModal(false);
         setReservationModal(true);
     };
@@ -351,6 +357,30 @@ const Hostels = () => {
                     <div className="modal-content">
                         <span className="close-modal" onClick={closeReservationModal}>&times;</span>
                         <h2>Reserve a Room at {selectedHostel.name}</h2>
+
+                        {!bookingTermsAccepted ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', minHeight: '300px', justifyContent: 'center', alignItems: 'center', textAlign: 'center', padding: '1rem 0' }}>
+                                <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📋</div>
+                                <h3 style={{ margin: '0 0 0.75rem 0', color: '#0f172a' }}>Terms &amp; Conditions</h3>
+                                <p style={{ color: '#64748b', fontSize: '0.9rem', maxWidth: '420px', lineHeight: 1.6 }}>
+                                    Please read and accept our booking terms before continuing to reserve a room.
+                                </p>
+                                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '1rem', margin: '1rem 0', maxWidth: '420px', textAlign: 'left' }}>
+                                    <p style={{ margin: 0, color: '#334155', fontSize: '0.88rem', lineHeight: 1.6 }}>
+                                        <strong>Room Satisfaction Guarantee:</strong> If you do not like the room at check-in, you may cancel the
+                                        booking and the <strong>caretaker will refund your money</strong>.
+                                    </p>
+                                </div>
+                                <button type="button" className="primary-btn black-btn" onClick={() => setBookingTermsAccepted(true)}>
+                                    I Agree, Continue Booking
+                                </button>
+                                <p className="form-footer-text">
+                                    <button type="button" onClick={closeReservationModal} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.85rem', padding: 0 }}>
+                                        Cancel
+                                    </button>
+                                </p>
+                            </div>
+                        ) : (
                         <form className="vertical-form" onSubmit={async (e) => {
                             e.preventDefault();
                             
@@ -369,6 +399,17 @@ const Hostels = () => {
 
                                 if (paymentMethod === 'mobile_money' && !mmSent) {
                                     alert('Please confirm that you have sent the money first.');
+                                    return;
+                                }
+
+                                const passportInput = document.getElementById('passportPhotoUpload');
+                                if (!passportInput || !passportInput.files || passportInput.files.length === 0) {
+                                    alert('Please upload your passport photo for identification.');
+                                    return;
+                                }
+
+                                if (!acceptedTerms) {
+                                    alert('Please read and accept the Terms and Conditions before reserving.');
                                     return;
                                 }
 
@@ -404,51 +445,35 @@ const Hostels = () => {
                                     }
                                 }
 
-                                if (isUpload) {
-                                    const formData = new FormData();
-                                    formData.append('hostel', selectedHostel.id);
-                                    formData.append('payment_method', document.getElementById('paymentMethod')?.value);
-                                    formData.append('total_amount', totalAmount);
-                                    formData.append('semester', 'Fall 2024');
-                                    formData.append('academic_year', '2024-2025');
-                                    formData.append('check_in_date', bookingDate || '2024-09-01');
-                                    formData.append('check_out_date', checkOutStr);
-                                    formData.append('booking_date', bookingDate);
-                                    formData.append('transaction_id', '');
-                                    if (paymentMethod === 'mobile_money') {
-                                        formData.append('mm_number', mmNumber);
-                                        formData.append('mm_amount', parseFloat(mmAmount) || 0);
-                                        formData.append('caretaker_phone', selectedHostel.caretaker_phone || '0769559707');
-                                    }
-                                    formData.append('notes', notesInfo);
-                                    
-                                    const fileInput = document.getElementById('receiptUpload');
-                                    if (fileInput && fileInput.files.length > 0) {
-                                        formData.append('receipt_image', fileInput.files[0]);
-                                    }
-                                    
-                                    response = await api.upload(API_CONFIG.RESERVATIONS.CREATE, formData);
-                                } else {
-                                    const jsonData = {
-                                        hostel: selectedHostel.id,
-                                        payment_method: document.getElementById('paymentMethod')?.value,
-                                        total_amount: totalAmount,
-                                        semester: 'Fall 2024',
-                                        academic_year: '2024-2025',
-                                        check_in_date: bookingDate || '2024-09-01',
-                                        check_out_date: checkOutStr,
-                                        booking_date: bookingDate,
-                                        transaction_id: '',
-                                        notes: notesInfo
-                                    };
-                                    if (paymentMethod === 'mobile_money') {
-                                        jsonData.mm_number = mmNumber;
-                                        jsonData.mm_amount = parseFloat(mmAmount) || 0;
-                                        jsonData.caretaker_phone = selectedHostel.caretaker_phone || '0769559707';
-                                    }
-                                    
-                                    response = await api.post(API_CONFIG.RESERVATIONS.CREATE, jsonData);
+                                // Always use FormData so we can include the passport photo file
+                                const formData = new FormData();
+                                formData.append('hostel', selectedHostel.id);
+                                formData.append('payment_method', document.getElementById('paymentMethod')?.value);
+                                formData.append('total_amount', totalAmount);
+                                formData.append('semester', 'Fall 2024');
+                                formData.append('academic_year', '2024-2025');
+                                formData.append('check_in_date', bookingDate || '2024-09-01');
+                                formData.append('check_out_date', checkOutStr);
+                                formData.append('booking_date', bookingDate);
+                                formData.append('transaction_id', '');
+                                formData.append('notes', notesInfo);
+
+                                if (passportInput.files.length > 0) {
+                                    formData.append('passport_photo', passportInput.files[0]);
                                 }
+
+                                if (paymentMethod === 'mobile_money') {
+                                    formData.append('mm_number', mmNumber);
+                                    formData.append('mm_amount', parseFloat(mmAmount) || 0);
+                                    formData.append('caretaker_phone', selectedHostel.caretaker_phone || '0769559707');
+                                }
+
+                                const receiptInput = document.getElementById('receiptUpload');
+                                if (receiptInput && receiptInput.files.length > 0) {
+                                    formData.append('receipt_image', receiptInput.files[0]);
+                                }
+                                
+                                response = await api.upload(API_CONFIG.RESERVATIONS.CREATE, formData);
                                 
                                 if (paymentMethod === 'mobile_money') {
                                     alert('Your reservation has been submitted!\n\nThe hostel caretaker will confirm your payment, and an admin will approve it on the admin dashboard. You will see the payment status update once approved.');
@@ -539,6 +564,20 @@ const Hostels = () => {
                                 <option value="double">Double Room</option>
                                 <option value="mixed">Mixed Shared</option>
                             </select>
+
+                            <label>Passport Photo (for identification)</label>
+                            <div style={{ marginBottom: '1.25rem', padding: '1rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+                                <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0 0 0.75rem 0', lineHeight: 1.5 }}>
+                                    Please upload a recent <strong>passport photo</strong> of yourself. This helps the hostel caretaker and admin identify you when you check in.
+                                </p>
+                                <input
+                                    type="file"
+                                    id="passportPhotoUpload"
+                                    accept="image/*"
+                                    required
+                                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #cbd5e1', borderRadius: '6px', background: '#fff' }}
+                                />
+                            </div>
                             
                             <div className="deposit-section">
                                 <h3>Payment Details</h3>
@@ -649,11 +688,34 @@ const Hostels = () => {
                                 )}
                             </div>
 
+                            <div className="terms-section" style={{ marginTop: '1.5rem', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '1rem' }}>
+                                <h3 style={{ margin: '0 0 0.75rem 0', color: '#92400e', fontSize: '1rem' }}>Terms &amp; Conditions</h3>
+                                <div style={{ fontSize: '0.88rem', color: '#78350f', lineHeight: 1.6 }}>
+                                    <p style={{ margin: '0 0 0.75rem 0' }}>
+                                        <strong>Room Satisfaction Guarantee:</strong> We want you to be comfortable. When you check in, if you do not like the room you have reserved, you may cancel the booking and the <strong>caretaker will refund your money</strong>.
+                                    </p>
+                                    <ul style={{ margin: '0 0 0.5rem 0', paddingLeft: '1.25rem' }}>
+                                        <li>Your 50% deposit secures the room for you and is refundable if you reject the room at check-in.</li>
+                                        <li>The refund comes from the hostel caretaker, not from the university.</li>
+                                        <li>Follow the booking and hostel conditions, and treat the hostel property with care.</li>
+                                    </ul>
+                                </div>
+                                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginTop: '0.5rem', cursor: 'pointer', color: '#78350f', fontSize: '0.9rem' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={acceptedTerms}
+                                        onChange={(e) => setAcceptedTerms(e.target.checked)}
+                                        style={{ marginTop: '0.1rem', width: '16px', height: '16px' }}
+                                    />
+                                    <span>I have read and agree to the Terms &amp; Conditions above.</span>
+                                </label>
+                            </div>
+
                             <button
                                 type="submit"
                                 className="primary-btn"
-                                disabled={paymentMethod === 'mobile_money' && !mmSent}
-                                title={paymentMethod === 'mobile_money' && !mmSent ? 'Confirm that you have sent the money first' : undefined}
+                                disabled={(paymentMethod === 'mobile_money' && !mmSent) || !acceptedTerms}
+                                title={paymentMethod === 'mobile_money' && !mmSent ? 'Confirm that you have sent the money first' : !acceptedTerms ? 'Read and accept the Terms and Conditions first' : undefined}
                             >
                                 {paymentMethod === 'mobile_money' && mmSent
                                     ? 'Submit Reservation for Approval'
@@ -662,6 +724,7 @@ const Hostels = () => {
                                         : 'Confirm Reservation'}
                             </button>
                         </form>
+                        )}
                     </div>
                 </div>
             )}

@@ -57,7 +57,13 @@ const Home = () => {
                     <p>Browse, compare and reserve student accommodation — all in one place.</p>
                     <div className="hero-buttons">
                         <button className="hero-btn primary" onClick={() => navigate('/hostels')}>View Hostels</button>
-                        <button className="hero-btn outline" onClick={() => navigate('/register')}>Sign Up &rarr;</button>
+                        {!currentUser && (
+                            <>
+                                <button className="hero-btn outline" onClick={() => navigate('/register')}>Sign Up</button>
+                                <button className="hero-btn outline" onClick={() => navigate('/login')}>Sign In</button>
+                                <button className="hero-btn add-hostel" onClick={() => navigate('/register/caretaker')}>+ Add Your Hostel</button>
+                            </>
+                        )}
                     </div>
                 </div>
                 

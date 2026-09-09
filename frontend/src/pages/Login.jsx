@@ -117,7 +117,18 @@ const Login = () => {
                     </div>
 
                     <button type="submit" className="primary-btn black-btn">Sign In</button>
-                    <p className="form-footer-text">No account? <Link to="/register">Sign up here</Link></p>
+                    <p className="form-footer-text">
+                        {role === 'caretaker' ? (
+                            <>No caretaker account? <Link to="/register/caretaker">Add your hostel</Link></>
+                        ) : (
+                            <>No account? <Link to="/register">Sign up here</Link></>
+                        )}
+                    </p>
+                    {role === 'caretaker' && (
+                        <p className="form-footer-text" style={{ marginTop: '0.5rem' }}>
+                            Want to list &amp; manage a hostel? <Link to="/register/caretaker">Add Your Hostel</Link> — fill in your account, hostel and subscription in one step.
+                        </p>
+                    )}
                 </form>
             </div>
         </section>

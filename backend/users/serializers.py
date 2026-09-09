@@ -240,3 +240,45 @@ class LoginActivitySerializer(serializers.ModelSerializer):
             'user_agent', 'login_time', 'logout_time', 'is_successful'
         ]
         read_only_fields = ['user', 'ip_address', 'user_agent']
+
+
+class CaretakerRegisterSerializer(serializers.ModelSerializer):
+    """Self-registration for caretakers (hostel owners/managers).
+
+    A caretaker creates their own account so they can later pay a subscription
+    fee to list and monitor their hostel on our site.
+    """
+    name = serializers.CharField(write_only=True)
+    password = serializers.CharField(write_only=True, validators=[validate_password])
+    password_confirm = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ['name', 'email', 'phone', 'gender', 'password', 'password_confirm']
+
+    def validate(self, data):
+        if data['password'] != data['password_confirm']:
+            raise serializers.ValidationError("Passwords don't match.")
+        return data
+
+    def create(self, validated_data):
+        validated_data.pop('password_confirm')
+        password = validated_data.pop('password')
+        raw_name = validated_data.pop('name').strip()
+        parts = raw_name.split(None, 1)
+        first_name = parts[0] if parts else ''
+        last_name = parts[1] if len(parts) > 1 else ''
+
+        email = validated_data['email'].strip()
+        user = User.objects.create_user(
+            username=email,
+            email=email,
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
+            phone=validated_data['phone'].strip(),
+            gender=validated_data.get('gender') or None,
+            role='caretaker',
+        )
+        UserProfile.objects.get_or_create(user=user)
+        return user

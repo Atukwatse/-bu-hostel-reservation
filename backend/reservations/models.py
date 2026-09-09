@@ -48,6 +48,7 @@ class Reservation(models.Model):
     special_requests = models.TextField(blank=True)
     notes = models.TextField(blank=True)
     receipt_image = models.ImageField(upload_to='receipts/', blank=True, null=True)
+    passport_photo = models.ImageField(upload_to='passport_photos/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     confirmed_at = models.DateTimeField(blank=True, null=True)

@@ -45,6 +45,7 @@ class Hostel(models.Model):
         choices=ROOM_STATUS_CHOICES, 
         default='Available'
     )
+    is_listed = models.BooleanField(default=True)
     image = models.ImageField(upload_to='room_images/', blank=False, null=False, default='room_images/placeholder.jpg')
     description = models.TextField(blank=True)
     facilities = models.TextField(blank=True)  # Comma-separated facilities
@@ -134,3 +135,92 @@ class Review(models.Model):
 
     def __str__(self):
         return f"{self.user.name} - {self.hostel.name} - {self.rating} stars"
+
+
+class HostelSubscription(models.Model):
+    """A paid subscription a caretaker must hold to list a hostel on the site.
+
+    The system admin (Dean of Students) benefits by charging caretakers a
+    subscription fee to add and keep their hostels listed and monitored.
+    """
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('expired', 'Expired'),
+        ('cancelled', 'Cancelled'),
+        ('pending', 'Pending'),
+    ]
+
+    caretaker = models.ForeignKey(
+        'users.User',
+        on_delete=models.CASCADE,
+        related_name='hostel_subscriptions'
+    )
+    hostel = models.ForeignKey(
+        Hostel,
+        on_delete=models.CASCADE,
+        related_name='subscription',
+        blank=True,
+        null=True
+    )
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2)
+    paid_via = models.CharField(max_length=20, choices=[
+        ('mobile_money', 'Mobile Money'),
+        ('bank_transfer', 'Bank Transfer'),
+        ('cash', 'Cash'),
+        ('upload_receipt', 'Upload Receipt'),
+    ])
+    transaction_id = models.CharField(max_length=100, blank=True, default='')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    receipt_image = models.ImageField(upload_to='subscription_receipts/', blank=True, null=True)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Hostel Subscription'
+        verbose_name_plural = 'Hostel Subscriptions'
+
+    def __str__(self):
+        return f"{self.caretaker.name} - {self.hostel.name} - {self.status}"
+
+    @property
+    def is_active(self):
+        from django.utils import timezone
+        from datetime import date
+        today = timezone.localdate()
+        return self.status == 'active' and self.start_date <= today <= self.end_date
+
+
+# Number of days a caretaker has to pay the subscription after their hostel is
+# listed. If they fail to pay within this grace period, the hostel is removed
+# from the site.
+HOSTEL_GRACE_DAYS = 4
+
+
+def expired_grace_hostels():
+    """Return hostels whose 4-day payment grace period has lapsed unpaid.
+
+    These are caretaker-owned hostels that are shown on the site but whose
+    caretaker holds no active subscription covering today, and whose listing is
+    older than the grace period. They should be removed from the site.
+    """
+    from django.utils import timezone
+    from datetime import timedelta
+    from django.db.models import Exists, OuterRef
+
+    today = timezone.localdate()
+    cutoff = timezone.now() - timedelta(days=HOSTEL_GRACE_DAYS)
+
+    active_subs = HostelSubscription.objects.filter(
+        caretaker=OuterRef('admin_user'),
+        status='active',
+        start_date__lte=today,
+        end_date__gte=today,
+    )
+    return Hostel.objects.filter(
+        admin_user__isnull=False,
+        admin_user__role='caretaker',
+        created_at__lt=cutoff,
+    ).annotate(has_active=Exists(active_subs)).filter(has_active=False)

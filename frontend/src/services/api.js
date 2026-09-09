@@ -8,6 +8,7 @@ export const API_CONFIG = {
         LOGIN: '/auth/login/',
         LOGOUT: '/auth/logout/',
         REGISTER: '/auth/register/',
+        CARETAKER_REGISTER: '/auth/register/caretaker/',
         CURRENT_USER: '/auth/me/',
         CHANGE_PASSWORD: '/users/users/change_password/',
     },
@@ -22,6 +23,7 @@ export const API_CONFIG = {
         ROOMS: (id) => `/hostels/hostels/${id}/rooms/`,
         REVIEWS: (id) => `/hostels/hostels/${id}/reviews/`,
         ADD_REVIEW: (id) => `/hostels/hostels/${id}/add_review/`,
+        ONBOARD: '/hostels/hostels/onboard/',
         SEARCH: '/hostels/hostels/search/',
         BY_TYPE: '/hostels/hostels/by_type/',
     },
@@ -33,6 +35,15 @@ export const API_CONFIG = {
         CREATE: '/hostels/rooms/',
         UPDATE: (id) => `/hostels/rooms/${id}/`,
         DELETE: (id) => `/hostels/rooms/${id}/`,
+    },
+
+    // Hostel subscription endpoints
+    SUBSCRIPTIONS: {
+        LIST: '/hostels/subscriptions/',
+        CREATE: '/hostels/subscriptions/',
+        DETAIL: (id) => `/hostels/subscriptions/${id}/`,
+        MY_SUBSCRIPTION: '/hostels/subscriptions/my_subscription/',
+        ACTIVATE: (id) => `/hostels/subscriptions/${id}/activate/`,
     },
     
     // User endpoints

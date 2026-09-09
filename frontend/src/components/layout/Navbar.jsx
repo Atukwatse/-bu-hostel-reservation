@@ -62,6 +62,15 @@ const Navbar = () => {
                         <>
                             <li><Link to="/login" className="nav-btn nav-btn-outline">Sign In</Link></li>
                             <li><Link to="/register" className="nav-btn nav-btn-glow">Sign Up</Link></li>
+                            <li>
+                                <Link
+                                    to="/register/caretaker"
+                                    className="nav-btn"
+                                    style={{ color: '#fff', backgroundColor: '#2563eb', fontWeight: 600, padding: '0.5rem 1rem', borderRadius: '4px' }}
+                                >
+                                    + Add Your Hostel
+                                </Link>
+                            </li>
                         </>
                     ) : (
                         <>

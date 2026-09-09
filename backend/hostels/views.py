@@ -4,10 +4,12 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Avg
-from .models import Hostel, HostelImage, Room, Review
+from .models import Hostel, HostelImage, Room, Review, HostelSubscription, expired_grace_hostels
 from .serializers import (
     HostelSerializer, HostelListSerializer, RoomSerializer,
-    ReviewSerializer, ReviewCreateSerializer, HostelImageSerializer
+    ReviewSerializer, ReviewCreateSerializer, HostelImageSerializer,
+    HostelSubscriptionSerializer, HostelSubscriptionCreateSerializer,
+    HostelOnboardSerializer
 )
 
 
@@ -24,12 +26,62 @@ class HostelViewSet(viewsets.ModelViewSet):
             return HostelListSerializer
         return HostelSerializer
 
+    def get_queryset(self):
+        """Return the hostels visible to the current user.
+
+        Caretaker hostels are shown on the site immediately (even before they
+        pay) and are given a 4-day grace period to pay the subscription fee.
+        Hostels whose grace period has lapsed unpaid are removed from the site
+        (excluded from every listing below). Admins see all hostels.
+        """
+        qs = Hostel.objects.all()
+        expired_ids = expired_grace_hostels().values('id')
+        qs = qs.exclude(id__in=expired_ids)
+
+        user = self.request.user
+        if getattr(user, 'is_authenticated', False):
+            if user.role == 'admin':
+                return qs
+            if user.role == 'caretaker':
+                return qs.filter(
+                    Q(is_listed=True) | Q(admin_user=user)
+                )
+        return qs.filter(is_listed=True)
+
     def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
+        if self.action in ['list', 'retrieve', 'onboard']:
             self.permission_classes = [AllowAny]
         else:
             self.permission_classes = [IsAuthenticated]
         return super().get_permissions()
+
+    def _has_active_subscription(self, user):
+        """A caretaker needs an active paid subscription to list a hostel."""
+        if user.role != 'caretaker':
+            return True
+        from django.utils import timezone
+        today = timezone.localdate()
+        return user.hostel_subscriptions.filter(
+            status='active',
+            start_date__lte=today,
+            end_date__gte=today,
+        ).exists()
+
+    def perform_create(self, serializer):
+        """Gate hostel creation: caretakers must hold an active paid subscription.
+
+        Admins (Dean of Students) can create hostels freely. A caretaker who
+        self-registers must first pay the subscription fee before they can add
+        their hostel to our site.
+        """
+        user = self.request.user
+        if user.role == 'caretaker' and not self._has_active_subscription(user):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied(
+                'You need an active subscription to list a hostel on our site. '
+                'Please subscribe first so you can add and start monitoring your hostel.'
+            )
+        serializer.save()
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def my_hostel(self, request):
@@ -51,6 +103,31 @@ class HostelViewSet(viewsets.ModelViewSet):
         hostels = self.get_queryset()
         serializer = HostelListSerializer(hostels, many=True, context={'request': request})
         return Response({'is_admin': False, 'hostel': None, 'single': False, 'hostels': serializer.data})
+
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def onboard(self, request):
+        """Single-step caretaker onboarding: account + hostel draft + pending subscription.
+
+        A caretaker who is not yet signed up fills one form (account details,
+        hostel details and subscription payment info) and submits it once. This
+        creates their account, saves their hostel as a draft (hidden from the
+        public), and records a pending subscription. Once the admin activates
+        the subscription, the hostel is published automatically.
+        """
+        serializer = HostelOnboardSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            result = serializer.save()
+            return Response(
+                {
+                    'message': (
+                        'Your account, hostel and subscription request were submitted. '
+                        'The system admin will verify your payment and publish your hostel.'
+                    ),
+                    **result,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def select_admin(self, request, pk=None):
@@ -142,7 +219,22 @@ class HostelViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(hostels, many=True)
         return Response(serializer.data)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def my_subscription(self, request):
+        """Return whether the logged-in caretaker has an active account subscription."""
+        user = request.user
+        if user.role != 'caretaker':
+            return Response({'active': False, 'subscription': None})
+        from django.utils import timezone
+        today = timezone.localdate()
+        sub = user.hostel_subscriptions.filter(
+            status='active', start_date__lte=today, end_date__gte=today
+        ).first()
+        if sub is not None:
+            return Response({'active': True, 'subscription': HostelSubscriptionSerializer(sub).data})
+        return Response({'active': False, 'subscription': None})
+
+    @action(detail=False, methods=['get'], permission_classes=[AllowAny])
     def search(self, request):
         """Advanced search for hostels"""
         query = request.query_params.get('q', '')
@@ -244,3 +336,64 @@ class HostelImageViewSet(viewsets.ModelViewSet):
         hostel_id = self.request.data.get('hostel')
         hostel = Hostel.objects.get(id=hostel_id)
         serializer.save()
+
+
+class HostelSubscriptionViewSet(viewsets.ModelViewSet):
+    """Manage caretaker subscriptions to list hostels on the site.
+
+    Caretakers create a subscription (paying the admin the subscription fee)
+    to unlock the ability to add and monitor a hostel. Admins can see and
+    manage all subscriptions.
+    """
+    queryset = HostelSubscription.objects.all()
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['status', 'hostel']
+    search_fields = ['caretaker__username', 'caretaker__email', 'hostel__name']
+    ordering_fields = ['created_at', 'start_date', 'end_date', 'amount_paid']
+    ordering = ['-created_at']
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return HostelSubscriptionCreateSerializer
+        return HostelSubscriptionSerializer
+
+    def get_queryset(self):
+        if self.request.user.role == 'admin':
+            return HostelSubscription.objects.all()
+        return HostelSubscription.objects.filter(caretaker=self.request.user)
+
+    @action(detail=False, methods=['get'])
+    def my_subscription(self, request):
+        """Get the current caretaker's active subscription."""
+        from django.utils import timezone
+        today = timezone.localdate()
+        sub = HostelSubscription.objects.filter(
+            caretaker=request.user,
+            status='active',
+            start_date__lte=today,
+            end_date__gte=today,
+        ).first()
+        serializer = HostelSubscriptionSerializer(sub) if sub else None
+        return Response({
+            'active': sub is not None,
+            'subscription': serializer.data if serializer else None
+        })
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def activate(self, request, pk=None):
+        """Admin-only: activate/approve a pending subscription."""
+        if request.user.role != 'admin':
+            return Response(
+                {'error': 'Only admins can activate subscriptions'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        subscription = self.get_object()
+        subscription.status = 'active'
+        subscription.save()
+        # If this subscription was created via single-step onboarding, it owns a
+        # draft hostel - publish it now that the payment is verified.
+        if subscription.hostel_id and not subscription.hostel.is_listed:
+            subscription.hostel.is_listed = True
+            subscription.hostel.save(update_fields=['is_listed'])
+        return Response({'message': 'Subscription activated successfully'})

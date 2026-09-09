@@ -12,7 +12,7 @@ from hostels.models import Hostel
 from .serializers import (
     UserSerializer, UserRegistrationSerializer, UserLoginSerializer,
     UserUpdateSerializer, PasswordChangeSerializer, LoginActivitySerializer,
-    CaretakerAdminCreateSerializer,
+    CaretakerAdminCreateSerializer, CaretakerRegisterSerializer,
 )
 
 
@@ -240,4 +240,38 @@ def register_view(request):
             'message': 'Registration successful'
         }, status=status.HTTP_201_CREATED)
     
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([permissions.AllowAny])
+@csrf_exempt
+def caretaker_register_view(request):
+    """Self-registration for caretakers (hostel owners/managers).
+
+    A caretaker creates their own account, then pays a subscription fee (to
+    the system admin) before they can list and monitor their hostel on the site.
+    """
+    serializer = CaretakerRegisterSerializer(data=request.data)
+    if serializer.is_valid():
+        user = serializer.save()
+
+        # Create token for new user
+        token, created = Token.objects.get_or_create(user=user)
+
+        # Record login activity
+        LoginActivity.objects.create(
+            user=user,
+            ip_address=request.META.get('REMOTE_ADDR'),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+            is_successful=True
+        )
+
+        return Response({
+            'token': token.key,
+            'user': UserSerializer(user).data,
+            'message': 'Caretaker account created successfully'
+        }, status=status.HTTP_201_CREATED)
+
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
