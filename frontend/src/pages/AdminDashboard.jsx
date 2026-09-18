@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api, API_CONFIG } from '../services/api';
 import { displayUserName } from '../utils/userDisplayName';
 import '../AdminDashboard.css';
 
 const AdminDashboard = () => {
+    const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState('dashboard');
     const [hostels, setHostels] = useState([]);
     const [rooms, setRooms] = useState([]);
@@ -504,6 +506,80 @@ const AdminDashboard = () => {
         }
 
         if (activeTab === 'dashboard') {
+            const activeSubs = subscriptions.filter(s => s.status === 'active');
+            const pendingSubs = subscriptions.filter(s => s.status === 'pending');
+            const totalRevenue = activeSubs
+                .reduce((sum, s) => sum + (parseFloat(s.amount_paid) || 0), 0);
+
+            if (isAdmin) {
+                return (
+                    <div className="admin-tab-content active">
+                        <div className="admin-top-bar">
+                            <h2>Admin Overview</h2>
+                            <p style={{ color: '#64748b', fontSize: '0.9rem', margin: 0 }}>Welcome, {adminWelcome}</p>
+                        </div>
+                        <div className="admin-dashboard-cards">
+                            <div className="admin-card">
+                                <span className="card-title">Caretaker Hostels</span>
+                                <strong>{stats.totalHostels}</strong>
+                                <span className="card-desc">Listed on site</span>
+                            </div>
+                            <div className="admin-card">
+                                <span className="card-title">Paid Subscriptions</span>
+                                <strong style={{ color: '#166534' }}>{activeSubs.length}</strong>
+                                <span className="card-desc">Active</span>
+                            </div>
+                            <div className="admin-card">
+                                <span className="card-title">Unpaid Subscriptions</span>
+                                <strong style={{ color: '#b45309' }}>{pendingSubs.length}</strong>
+                                <span className="card-desc">Pending payment</span>
+                            </div>
+                            <div className="admin-card">
+                                <span className="card-title">Total Revenue</span>
+                                <strong style={{ color: '#166534' }}>UGX {totalRevenue.toLocaleString()}</strong>
+                                <span className="card-desc">Collected</span>
+                            </div>
+                        </div>
+                        <div className="admin-recent-activity">
+                            <h3>Subscription Overview</h3>
+                            <table className="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Caretaker</th>
+                                        <th>Hostel</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Valid Until</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {subscriptions.map(sub => (
+                                        <tr key={sub.id}>
+                                            <td>{sub.caretakerName}</td>
+                                            <td>{sub.hostelName}</td>
+                                            <td>UGX {Number(sub.amount_paid).toLocaleString()}</td>
+                                            <td>
+                                                <span className={`status-badge ${sub.status}`}>
+                                                    {sub.status === 'active' ? 'Paid' : sub.status === 'pending' ? 'Not Paid' : sub.status}
+                                                </span>
+                                            </td>
+                                            <td>{sub.end_date}</td>
+                                        </tr>
+                                    ))}
+                                    {subscriptions.length === 0 && (
+                                        <tr>
+                                            <td colSpan="5" className="text-center" style={{ color: '#64748b', textAlign: 'center' }}>
+                                                No subscriptions yet
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                );
+            }
+
             return (
                 <div className="admin-tab-content active">
                     <div className="admin-top-bar">
@@ -570,20 +646,34 @@ const AdminDashboard = () => {
                 </div>
             );
         } else if (activeTab === 'manage-hostels') {
+            const getSubscriptionForHostel = (hostelId) => {
+                return subscriptions.find(sub => parseInt(sub.hostel, 10) === parseInt(hostelId, 10) || sub.hostel === String(hostelId));
+            };
+
             return (
                 <div className="admin-tab-content active">
                     <div className="admin-top-bar">
-                        <h2>Manage Hostels</h2>
-                        <div>
+                        <h2>{t('admin.manageHostels')}</h2>
+                        {!isAdmin ? (
+                            <div>
+                                <input 
+                                    type="text" 
+                                    placeholder="Search hostels..." 
+                                    value={hostelSearchTerm}
+                                    onChange={(e) => setHostelSearchTerm(e.target.value)}
+                                    style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginRight: '10px' }}
+                                />
+                                <button className="primary-btn black-btn" onClick={handleAddHostel} style={{margin:0, padding: '0.5rem 1rem', width: 'auto', fontSize: '0.85rem'}}>+ Add Hostel</button>
+                            </div>
+                        ) : (
                             <input 
                                 type="text" 
                                 placeholder="Search hostels..." 
                                 value={hostelSearchTerm}
                                 onChange={(e) => setHostelSearchTerm(e.target.value)}
-                                style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc', marginRight: '10px' }}
+                                style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
                             />
-                            <button className="primary-btn black-btn" onClick={handleAddHostel} style={{margin:0, padding: '0.5rem 1rem', width: 'auto', fontSize: '0.85rem'}}>+ Add Hostel</button>
-                        </div>
+                        )}
                     </div>
                     {loading ? (
                         <div style={{ textAlign: 'center', padding: '2rem' }}>Loading...</div>
@@ -593,35 +683,59 @@ const AdminDashboard = () => {
                                 <tr>
                                     <th>Image</th>
                                     <th>Name</th>
+                                    {isAdmin && <th>Caretaker</th>}
                                     <th>Category</th>
                                     <th>Price/Sem</th>
+                                    {isAdmin && <th>Subscription</th>}
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {hostels.filter(h => h.name.toLowerCase().includes(hostelSearchTerm.toLowerCase())).map(h => (
-                                    <tr key={h.id}>
-                                        <td>
-                                            {h.image ? (
-                                                <img src={h.image} alt={h.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
-                                            ) : (
-                                                <div style={{ width: '40px', height: '40px', background: '#e2e8f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', color: '#94a3b8' }}>No Img</div>
+                                {hostels.filter(h => h.name.toLowerCase().includes(hostelSearchTerm.toLowerCase())).map(h => {
+                                    const sub = getSubscriptionForHostel(h.id);
+                                    const subStatus = sub ? sub.status : null;
+                                    return (
+                                        <tr key={h.id}>
+                                            <td>
+                                                {h.image ? (
+                                                    <img src={h.image} alt={h.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
+                                                ) : (
+                                                    <div style={{ width: '40px', height: '40px', background: '#e2e8f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', color: '#94a3b8' }}>No Img</div>
+                                                )}
+                                            </td>
+                                            <td>{h.name}</td>
+                                            {isAdmin && <td>{h.caretaker_phone || 'No caretaker'}</td>}
+                                            <td>{h.type}</td>
+                                            <td>{h.price}</td>
+                                            {isAdmin && (
+                                                <td>
+                                                    {subStatus === 'active' ? (
+                                                        <span style={{ color: '#166534', fontWeight: 600 }}>Paid ✓</span>
+                                                    ) : subStatus === 'pending' ? (
+                                                        <span style={{ color: '#b45309', fontWeight: 600 }}>Not Paid</span>
+                                                    ) : (
+                                                        <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>No Subscription</span>
+                                                    )}
+                                                </td>
                                             )}
-                                        </td>
-                                        <td>{h.name}</td>
-                                        <td>{h.type}</td>
-                                        <td>{h.price}</td>
-                                        <td>{h.status}</td>
-                                        <td>
-                                            <button className="btn-edit" onClick={() => handleEditHostel(h)} style={{marginRight: '5px'}}>Edit</button>
-                                            <button className="btn-delete" onClick={() => handleDeleteHostel(h.id)}>Delete</button>
-                                        </td>
-                                    </tr>
-                                ))}
+                                            <td>{h.status}</td>
+                                            <td>
+                                                {!isAdmin ? (
+                                                    <>
+                                                        <button className="btn-edit" onClick={() => handleEditHostel(h)} style={{marginRight: '5px'}}>Edit</button>
+                                                        <button className="btn-delete" onClick={() => handleDeleteHostel(h.id)}>Delete</button>
+                                                    </>
+                                                ) : (
+                                                    <span style={{ color: '#64748b', fontSize: '0.85rem' }}>View only</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                                 {hostels.length === 0 && (
                                     <tr>
-                                        <td colSpan="6" style={{textAlign: 'center', color: '#64748b'}}>No hostels found</td>
+                                        <td colSpan={isAdmin ? 8 : 6} style={{textAlign: 'center', color: '#64748b'}}>No hostels found</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -887,14 +1001,14 @@ const AdminDashboard = () => {
                         <h2>Hostel Subscriptions</h2>
                         <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem', color: '#64748b' }}>
                             <span>Total Revenue: <strong style={{ color: '#166534' }}>UGX {totalRevenue.toLocaleString()}</strong></span>
-                            <span>Active: <strong style={{ color: '#166534' }}>{activeSubs.length}</strong></span>
-                            <span>Pending: <strong style={{ color: '#b45309' }}>{pendingSubs.length}</strong></span>
+                            <span>Paid: <strong style={{ color: '#166534' }}>{activeSubs.length}</strong></span>
+                            <span>Not Paid: <strong style={{ color: '#b45309' }}>{pendingSubs.length}</strong></span>
                         </div>
                     </div>
                     <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1.25rem', fontSize: '0.88rem', color: '#92400e', lineHeight: 1.5 }}>
                         Caretaker hostels are shown on the site immediately. Each caretaker has <strong>4 days</strong> to pay the subscription fee. If a
                         pending subscription is not activated within that grace period, the hostel is automatically removed from the site. Activate
-                        pending subscriptions once you have confirmed the caretaker\u2019s payment.
+                        pending subscriptions once you have confirmed the caretaker's payment.
                     </div>
                     {loading ? (
                         <div style={{ textAlign: 'center', padding: '2rem' }}>Loading...</div>
@@ -908,38 +1022,45 @@ const AdminDashboard = () => {
                                     <th>Paid Via</th>
                                     <th>Transaction ID</th>
                                     <th>Valid Until</th>
-                                    <th>Status</th>
+                                    <th>Payment Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {subscriptions.map(sub => (
-                                    <tr key={sub.id}>
-                                        <td>{sub.caretakerName}</td>
-                                        <td>{sub.hostelName}</td>
-                                        <td>UGX {Number(sub.amount_paid).toLocaleString()}</td>
-                                        <td style={{ textTransform: 'capitalize' }}>{sub.paid_via?.replace(/_/g, ' ')}</td>
-                                        <td>{sub.transaction_id || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>None</span>}</td>
-                                        <td>{sub.end_date}</td>
-                                        <td>
-                                            <span className={`status-badge ${sub.status}`}>{sub.status}</span>
-                                        </td>
-                                        <td>
-                                            {sub.status === 'pending' && (
-                                                <button
-                                                    className="btn-confirm"
-                                                    style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '0.25rem 0.5rem', borderRadius: '4px', cursor: 'pointer' }}
-                                                    onClick={() => handleActivateSubscription(sub.id)}
-                                                >
-                                                    Activate
-                                                </button>
-                                            )}
-                                            {sub.status === 'active' && (
-                                                <span style={{ color: '#166534', fontSize: '0.85rem' }}>Active ✓</span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
+                                {subscriptions.map(sub => {
+                                    const isPaid = sub.status === 'active';
+                                    return (
+                                        <tr key={sub.id}>
+                                            <td>{sub.caretakerName}</td>
+                                            <td>{sub.hostelName}</td>
+                                            <td>UGX {Number(sub.amount_paid).toLocaleString()}</td>
+                                            <td style={{ textTransform: 'capitalize' }}>{sub.paid_via?.replace(/_/g, ' ')}</td>
+                                            <td>{sub.transaction_id || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>None</span>}</td>
+                                            <td>{sub.end_date}</td>
+                                            <td>
+                                                {isPaid ? (
+                                                    <span className="status-badge active" style={{ fontWeight: 600 }}>Paid ✓</span>
+                                                ) : (
+                                                    <span className="status-badge pending" style={{ fontWeight: 600 }}>Not Paid</span>
+                                                )}
+                                            </td>
+                                            <td>
+                                                {sub.status === 'pending' && (
+                                                    <button
+                                                        className="btn-confirm"
+                                                        style={{ backgroundColor: '#10b981', color: 'white', border: 'none', padding: '0.25rem 0.5rem', borderRadius: '4px', cursor: 'pointer' }}
+                                                        onClick={() => handleActivateSubscription(sub.id)}
+                                                    >
+                                                        Mark as Paid
+                                                    </button>
+                                                )}
+                                                {sub.status === 'active' && (
+                                                    <span style={{ color: '#166534', fontSize: '0.85rem' }}>Active ✓</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                                 {subscriptions.length === 0 && (
                                     <tr>
                                         <td colSpan="8" style={{ textAlign: 'center', color: '#64748b' }}>No subscriptions found</td>
@@ -963,7 +1084,7 @@ const AdminDashboard = () => {
                 <div className="admin-tab-content active">
                     <div className="admin-top-bar" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'flex-start' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                            <h2>Manage Rooms</h2>
+                            <h2>{t('admin.manageRooms')}</h2>
                             <div>
                                 <input 
                                     type="text" 
@@ -1571,20 +1692,22 @@ const AdminDashboard = () => {
             <div className="admin-layout">
                 <aside className="admin-sidebar">
                     <div className="admin-header">
-                        <h2>{isAdmin ? 'ADMIN PANEL' : 'HOSTEL PANEL'}</h2>
+                        <h2>{isAdmin ? t('admin.adminPanel') : t('admin.hostelPanel')}</h2>
                     </div>
                     <ul className="admin-nav" style={{ listStyle: 'none', padding: 0 }}>
-                        <li><button className={`admin-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Dashboard</button></li>
-                        <li><button className={`admin-nav-item ${activeTab === 'manage-hostels' ? 'active' : ''}`} onClick={() => setActiveTab('manage-hostels')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Manage Hostels</button></li>
-                        <li><button className={`admin-nav-item ${activeTab === 'manage-rooms' ? 'active' : ''}`} onClick={() => setActiveTab('manage-rooms')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Manage Rooms</button></li>
-                        {isAdmin && (
-                            <li><button className={`admin-nav-item ${activeTab === 'caretakers' ? 'active' : ''}`} onClick={() => setActiveTab('caretakers')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Caretakers</button></li>
+                        <li><button className={`admin-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>{t('admin.dashboard')}</button></li>
+                        <li><button className={`admin-nav-item ${activeTab === 'manage-hostels' ? 'active' : ''}`} onClick={() => setActiveTab('manage-hostels')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>{t('admin.manageHostels')}</button></li>
+                        {isAdmin ? (
+                            <>
+                                <li><button className={`admin-nav-item ${activeTab === 'subscriptions' ? 'active' : ''}`} onClick={() => setActiveTab('subscriptions')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>{t('admin.hostelSubscriptions')}</button></li>
+                            </>
+                        ) : (
+                            <>
+                                <li><button className={`admin-nav-item ${activeTab === 'manage-rooms' ? 'active' : ''}`} onClick={() => setActiveTab('manage-rooms')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>{t('admin.manageRooms')}</button></li>
+                                <li><button className={`admin-nav-item ${activeTab === 'reservations' ? 'active' : ''}`} onClick={() => setActiveTab('reservations')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>{t('admin.reservations')}</button></li>
+                                <li><button className={`admin-nav-item ${activeTab === 'students' ? 'active' : ''}`} onClick={() => setActiveTab('students')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>{t('admin.students')}</button></li>
+                            </>
                         )}
-                        {isAdmin && (
-                            <li><button className={`admin-nav-item ${activeTab === 'subscriptions' ? 'active' : ''}`} onClick={() => setActiveTab('subscriptions')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Hostel Subscriptions</button></li>
-                        )}
-                        <li><button className={`admin-nav-item ${activeTab === 'reservations' ? 'active' : ''}`} onClick={() => setActiveTab('reservations')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Reservations</button></li>
-                        <li><button className={`admin-nav-item ${activeTab === 'students' ? 'active' : ''}`} onClick={() => setActiveTab('students')} style={{width: '100%', textAlign: 'left', background: 'none', border: 'none', fontSize: '1rem', cursor: 'pointer', padding: '1rem'}}>Students</button></li>
                     </ul>
                 </aside>
                 
@@ -1597,7 +1720,7 @@ const AdminDashboard = () => {
                         }}>
                             <span style={{ fontSize: '1.6rem' }}>🏢</span>
                             <div>
-                                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#93c5fd' }}>Managing Hostel</div>
+                                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#93c5fd' }}>{t('admin.managingHostel')}</div>
                                 <div style={{ fontSize: '1.15rem', fontWeight: 700 }}>{managedHostel.name}</div>
                             </div>
                             {managedHostel.admin_user_phone && (

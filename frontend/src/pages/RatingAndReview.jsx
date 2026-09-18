@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { api, API_CONFIG } from '../services/api';
 
 const RatingAndReview = () => {
+    const { t } = useTranslation();
     const [reviews, setReviews] = useState([]);
     const [hostels, setHostels] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -36,7 +38,7 @@ const RatingAndReview = () => {
             setHostels(Array.isArray(hostelsData) ? hostelsData : (hostelsData.results || []));
         } catch (err) {
             console.error('Error fetching data:', err);
-            setError('Failed to load reviews. Please try again.');
+            setError(t('reviews.loadReviewsError'));
         } finally {
             setLoading(false);
         }
@@ -44,9 +46,9 @@ const RatingAndReview = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!formData.hostel) { setError('Please select a hostel.'); return; }
-        if (formData.rating === 0) { setError('Please select a star rating.'); return; }
-        if (!formData.comment.trim()) { setError('Please write a comment.'); return; }
+        if (!formData.hostel) { setError(t('reviews.selectHostelError')); return; }
+        if (formData.rating === 0) { setError(t('reviews.selectRatingError')); return; }
+        if (!formData.comment.trim()) { setError(t('reviews.writeCommentError')); return; }
 
         try {
             setSubmitting(true);
@@ -59,7 +61,7 @@ const RatingAndReview = () => {
                 comment: formData.comment.trim()
             });
 
-            setSuccess('🎉 Thank you! Your review has been posted successfully.');
+            setSuccess('🎉 ' + t('reviews.reviewSuccess'));
             setFormData({ hostel: '', rating: 0, comment: '' });
             setHoveredStar(0);
 
@@ -67,7 +69,7 @@ const RatingAndReview = () => {
             const updatedReviews = await api.get(API_CONFIG.REVIEWS.LIST);
             setReviews(Array.isArray(updatedReviews) ? updatedReviews : (updatedReviews.results || []));
         } catch (err) {
-            setError(err.message || 'Failed to submit. You may have already reviewed this hostel.');
+            setError(err.message || t('reviews.reviewFailed'));
         } finally {
             setSubmitting(false);
         }
@@ -98,7 +100,7 @@ const RatingAndReview = () => {
                 fontSize: '0.9rem'
             }}
         >
-            <option value="0" style={{ background: '#1e293b' }}>-- Choose Rating --</option>
+            <option value="0" style={{ background: '#1e293b' }}>{t('reviews.chooseRating')}</option>
             {ratingOptions.map(r => (
                 <option key={r} value={r} style={{ background: '#1e293b' }}>{r} / 5</option>
             ))}
@@ -144,27 +146,27 @@ const RatingAndReview = () => {
                 <div style={{ position: 'relative', zIndex: 1 }}>
                     <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>⭐</div>
                     <h1 style={{ color: '#ffffff', fontSize: 'clamp(1.8rem, 4vw, 3rem)', fontWeight: '800', margin: 0, letterSpacing: '-0.02em', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
-                        Student Ratings &amp; Reviews
+                        {t('reviews.heroTitle')}
                     </h1>
                     <p style={{ color: '#e2e8f0', marginTop: '0.75rem', fontSize: '1.1rem', maxWidth: '550px', margin: '0.75rem auto 0', textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}>
-                        Read honest reviews from fellow students and share your own hostel experience.
+                        {t('reviews.heroSubtitle')}
                     </p>
 
                     {/* Stats bar */}
                     <div style={{ display: 'flex', justifyContent: 'center', gap: '3rem', marginTop: '2rem', flexWrap: 'wrap' }}>
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#fbbf24', lineHeight: 1 }}>{averageRating}</div>
-                            <div style={{ color: '#cbd5e1', fontSize: '0.85rem', marginTop: '4px', fontWeight: '500' }}>Overall Rating</div>
+                            <div style={{ color: '#cbd5e1', fontSize: '0.85rem', marginTop: '4px', fontWeight: '500' }}>{t('reviews.overallRating')}</div>
                         </div>
                         <div style={{ width: '1px', background: 'rgba(255,255,255,0.15)', alignSelf: 'stretch' }} />
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#60a5fa', lineHeight: 1 }}>{reviews.length}</div>
-                            <div style={{ color: '#cbd5e1', fontSize: '0.85rem', marginTop: '4px', fontWeight: '500' }}>Total Reviews</div>
+                            <div style={{ color: '#cbd5e1', fontSize: '0.85rem', marginTop: '4px', fontWeight: '500' }}>{t('reviews.totalReviews')}</div>
                         </div>
                         <div style={{ width: '1px', background: 'rgba(255,255,255,0.15)', alignSelf: 'stretch' }} />
                         <div style={{ textAlign: 'center' }}>
                             <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#34d399', lineHeight: 1 }}>{hostels.length}</div>
-                            <div style={{ color: '#cbd5e1', fontSize: '0.85rem', marginTop: '4px', fontWeight: '500' }}>Hostels Reviewed</div>
+                            <div style={{ color: '#cbd5e1', fontSize: '0.85rem', marginTop: '4px', fontWeight: '500' }}>{t('reviews.hostelsReviewed')}</div>
                         </div>
                     </div>
                 </div>
@@ -178,7 +180,7 @@ const RatingAndReview = () => {
 
                     {/* Rating Distribution */}
                     <div style={{ background: 'rgba(30, 41, 59, 0.45)', backdropFilter: 'blur(10px)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', padding: '1.5rem' }}>
-                        <h3 style={{ color: '#ffffff', margin: '0 0 1rem', fontWeight: '700', fontSize: '1.05rem' }}>Rating Breakdown</h3>
+                        <h3 style={{ color: '#ffffff', margin: '0 0 1rem', fontWeight: '700', fontSize: '1.05rem' }}>{t('reviews.ratingBreakdown')}</h3>
                         {ratingCounts.map(({ stars, count, pct }) => (
                             <div key={stars} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
                                 <span style={{ color: '#fbbf24', fontSize: '1rem', width: '60px', whiteSpace: 'nowrap' }}>{stars} / 5</span>
@@ -193,15 +195,15 @@ const RatingAndReview = () => {
                     {/* Write a Review Form */}
                     <div style={{ background: 'rgba(30, 41, 59, 0.45)', backdropFilter: 'blur(10px)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', padding: '1.5rem' }}>
                         <h3 style={{ color: '#ffffff', margin: '0 0 1.25rem', fontWeight: '700', fontSize: '1.05rem' }}>
-                            ✏️ Write a Review
+                            ✏️ {t('reviews.writeReview')}
                         </h3>
 
                         {!currentUser ? (
                             <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
                                 <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>🔐</div>
-                                <p style={{ color: '#e2e8f0', marginBottom: '1rem', fontSize: '0.95rem' }}>Sign in to share your hostel experience</p>
+                                <p style={{ color: '#e2e8f0', marginBottom: '1rem', fontSize: '0.95rem' }}>{t('reviews.signInToShare')}</p>
                                 <Link to="/login" style={{ display: 'inline-block', background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)', color: '#fff', textDecoration: 'none', padding: '0.6rem 1.5rem', borderRadius: '8px', fontWeight: '600', fontSize: '0.9rem' }}>
-                                    Sign In to Review
+                                    {t('reviews.signInToReview')}
                                 </Link>
                             </div>
                         ) : (
@@ -218,14 +220,14 @@ const RatingAndReview = () => {
                                 )}
 
                                 <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ color: '#f1f5f9', fontSize: '0.85rem', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Select Hostel *</label>
+                                    <label style={{ color: '#f1f5f9', fontSize: '0.85rem', fontWeight: '600', display: 'block', marginBottom: '6px' }}>{t('reviews.selectHostel')}</label>
                                     <select
                                         value={formData.hostel}
                                         onChange={e => setFormData({ ...formData, hostel: e.target.value })}
                                         required
                                         style={{ width: '100%', padding: '0.65rem 0.75rem', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '8px', color: '#ffffff', fontSize: '0.9rem' }}
                                     >
-                                        <option value="" style={{ background: '#1e293b' }}>-- Choose a Hostel --</option>
+                                        <option value="" style={{ background: '#1e293b' }}>{t('reviews.chooseHostel')}</option>
                                         {hostels.map(h => (
                                             <option key={h.id} value={h.id} style={{ background: '#1e293b' }}>{h.name}</option>
                                         ))}
@@ -233,15 +235,15 @@ const RatingAndReview = () => {
                                 </div>
 
                                 <div style={{ marginBottom: '1rem' }}>
-                                    <label style={{ color: '#f1f5f9', fontSize: '0.85rem', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Your Rating *</label>
+                                    <label style={{ color: '#f1f5f9', fontSize: '0.85rem', fontWeight: '600', display: 'block', marginBottom: '6px' }}>{t('reviews.yourRating')}</label>
                                     {renderRatingSelect()}
                                 </div>
 
                                 <div style={{ marginBottom: '1.25rem' }}>
-                                    <label style={{ color: '#f1f5f9', fontSize: '0.85rem', fontWeight: '600', display: 'block', marginBottom: '6px' }}>Your Review *</label>
+                                    <label style={{ color: '#f1f5f9', fontSize: '0.85rem', fontWeight: '600', display: 'block', marginBottom: '6px' }}>{t('reviews.yourReview')}</label>
                                     <textarea
                                         rows="5"
-                                        placeholder="Tell other students about the facilities, security, environment, caretaker..."
+                                        placeholder={t('reviews.reviewPlaceholder')}
                                         value={formData.comment}
                                         onChange={e => setFormData({ ...formData, comment: e.target.value })}
                                         required
@@ -254,7 +256,7 @@ const RatingAndReview = () => {
                                     disabled={submitting}
                                     style={{ width: '100%', padding: '0.8rem', background: submitting ? '#475569' : 'linear-gradient(135deg, #3b82f6, #1d4ed8)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: '700', fontSize: '0.95rem', cursor: submitting ? 'not-allowed' : 'pointer', transition: 'opacity 0.2s' }}
                                 >
-                                    {submitting ? '⏳ Submitting...' : '📤 Post Review'}
+                                    {submitting ? '⏳ ' + t('reviews.submitting') : '📤 ' + t('reviews.postReview')}
                                 </button>
                             </form>
                         )}
@@ -265,13 +267,13 @@ const RatingAndReview = () => {
                 <div>
                     {/* Filter Bar */}
                     <div style={{ background: 'rgba(30, 41, 59, 0.45)', backdropFilter: 'blur(10px)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', padding: '1rem 1.25rem', marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                        <span style={{ color: '#e2e8f0', fontSize: '0.85rem', fontWeight: '600' }}>FILTER:</span>
+                        <span style={{ color: '#e2e8f0', fontSize: '0.85rem', fontWeight: '600' }}>{t('reviews.filter')}</span>
                         <select
                             value={filterHostel}
                             onChange={e => setFilterHostel(e.target.value)}
                             style={{ padding: '0.45rem 0.75rem', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '6px', color: '#fff', fontSize: '0.85rem' }}
                         >
-                            <option value="all" style={{ background: '#1e293b' }}>All Hostels</option>
+                            <option value="all" style={{ background: '#1e293b' }}>{t('reviews.allHostels')}</option>
                             {hostels.map(h => (
                                 <option key={h.id} value={String(h.id)} style={{ background: '#1e293b' }}>{h.name}</option>
                             ))}
@@ -281,13 +283,13 @@ const RatingAndReview = () => {
                             onChange={e => setFilterRating(e.target.value)}
                             style={{ padding: '0.45rem 0.75rem', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.18)', borderRadius: '6px', color: '#fff', fontSize: '0.85rem' }}
                         >
-                            <option value="all" style={{ background: '#1e293b' }}>All Ratings</option>
+                            <option value="all" style={{ background: '#1e293b' }}>{t('reviews.allRatings')}</option>
                             {[5,4,3,2,1].map(r => (
                                 <option key={r} value={String(r)} style={{ background: '#1e293b' }}>{r} / 5</option>
                             ))}
                         </select>
                         <span style={{ marginLeft: 'auto', color: '#cbd5e1', fontSize: '0.85rem', fontWeight: '500' }}>
-                            {filteredReviews.length} review{filteredReviews.length !== 1 ? 's' : ''}
+                            {t('reviews.reviewsCount', { count: filteredReviews.length })}
                         </span>
                     </div>
 
@@ -295,7 +297,7 @@ const RatingAndReview = () => {
                     {loading ? (
                         <div style={{ textAlign: 'center', padding: '4rem', color: '#cbd5e1' }}>
                             <div style={{ fontSize: '2.5rem', marginBottom: '1rem', animation: 'spin 1s linear infinite' }}>⏳</div>
-                            Loading reviews...
+                            {t('reviews.loadingReviews')}
                         </div>
                     ) : filteredReviews.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '4rem 2rem', background: 'rgba(30, 41, 59, 0.45)', backdropFilter: 'blur(10px)', borderRadius: '16px', border: '1px dashed rgba(255,255,255,0.15)' }}>

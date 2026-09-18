@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { api, API_CONFIG } from '../services/api';
 import { displayUserName } from '../utils/userDisplayName';
 import '../Login.css';
 
 const Login = () => {
+    const { t } = useTranslation();
     const [role, setRole] = useState('student');
     const [name, setName] = useState('');
     const [username, setUsername] = useState('');
@@ -42,7 +44,7 @@ const Login = () => {
             window.location.href = ['admin', 'caretaker'].includes(role) ? '/admin' : '/';
         } catch (error) {
             console.error('Login error details:', error);
-            const errorMsg = error.message || 'Check your credentials and try again.';
+            const errorMsg = error.message || t('auth.checkCredentials');
             setError(errorMsg);
         } finally {
             setLoading(false);
@@ -52,8 +54,8 @@ const Login = () => {
     return (
         <section id="login" className="page-section active">
             <div className="form-container">
-                <h2>Welcome Back</h2>
-                <p style={{ marginTop: '5px', marginBottom: '25px', color: '#64748b', fontSize: '0.95rem' }}>Sign in to your BU Hostel account</p>
+                <h2>{t('auth.welcomeBack')}</h2>
+                <p style={{ marginTop: '5px', marginBottom: '25px', color: '#64748b', fontSize: '0.95rem' }}>{t('auth.signInSubtitle')}</p>
                 
                 {error && (
                     <div style={{ backgroundColor: '#fee2e2', color: '#b91c1c', padding: '0.75rem', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.85rem', border: '1px solid #fecaca' }}>
@@ -63,18 +65,18 @@ const Login = () => {
                 
                 <form onSubmit={handleLogin} className="vertical-form">
                     <div className="auth-tabs">
-                        <button type="button" className={`auth-tab ${role === 'student' ? 'active' : ''}`} onClick={() => setRole('student')}>Student</button>
-                        <button type="button" className={`auth-tab ${role === 'caretaker' ? 'active' : ''}`} onClick={() => setRole('caretaker')}>Caretaker</button>
-                        <button type="button" className={`auth-tab ${role === 'admin' ? 'active' : ''}`} onClick={() => setRole('admin')}>Admin</button>
+                        <button type="button" className={`auth-tab ${role === 'student' ? 'active' : ''}`} onClick={() => setRole('student')}>{t('auth.student')}</button>
+                        <button type="button" className={`auth-tab ${role === 'caretaker' ? 'active' : ''}`} onClick={() => setRole('caretaker')}>{t('auth.caretaker')}</button>
+                        <button type="button" className={`auth-tab ${role === 'admin' ? 'active' : ''}`} onClick={() => setRole('admin')}>{t('auth.admin')}</button>
                     </div>
 
                     {role === 'admin' ? (
                         <>
-                            <label htmlFor="loginName">Admin email or username</label>
+                            <label htmlFor="loginName">{t('auth.adminEmailOrUsername')}</label>
                             <input 
                                 type="text" 
                                 id="loginName" 
-                                placeholder="e.g. admin@bugema.ac.ug" 
+                                placeholder={t('auth.adminEmailPlaceholder')} 
                                 value={username} 
                                 onChange={e => setUsername(e.target.value)} 
                                 required 
@@ -82,11 +84,11 @@ const Login = () => {
                         </>
                     ) : (
                         <>
-                            <label htmlFor="loginName">Email, Username or Full Name</label>
+                            <label htmlFor="loginName">{t('auth.emailOrName')}</label>
                             <input 
                                 type="text" 
                                 id="loginName" 
-                                placeholder="e.g. blessing23455@gmail.com or John Mukasa" 
+                                placeholder={t('auth.emailOrNamePlaceholder')} 
                                 value={name} 
                                 onChange={e => setName(e.target.value)} 
                                 required 
@@ -94,12 +96,12 @@ const Login = () => {
                         </>
                     )}
 
-                    <label htmlFor="loginPassword">Password</label>
+                    <label htmlFor="loginPassword">{t('auth.password')}</label>
                     <div style={{ position: 'relative', width: '100%', marginBottom: '15px' }}>
                         <input 
                             type={showPassword ? "text" : "password"} 
                             id="loginPassword" 
-                            placeholder="e.g. studentpass123" 
+                            placeholder={t('auth.passwordPlaceholder')} 
                             value={password} 
                             onChange={e => setPassword(e.target.value)} 
                             required 
@@ -109,24 +111,24 @@ const Login = () => {
                             type="button" 
                             onClick={() => setShowPassword(!showPassword)}
                             style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', padding: 0 }}
-                            aria-label={showPassword ? "Hide password" : "Show password"}
-                            title={showPassword ? "Hide password" : "Show password"}
+                            aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+                            title={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                         >
                             {showPassword ? "🙈" : "👁️"}
                         </button>
                     </div>
 
-                    <button type="submit" className="primary-btn black-btn">Sign In</button>
+                    <button type="submit" className="primary-btn black-btn">{t('auth.signIn')}</button>
                     <p className="form-footer-text">
                         {role === 'caretaker' ? (
-                            <>No caretaker account? <Link to="/register/caretaker">Add your hostel</Link></>
+                            <>{t('auth.noCaretakerAccount')} <Link to="/register/caretaker">{t('auth.addYourHostel')}</Link></>
                         ) : (
-                            <>No account? <Link to="/register">Sign up here</Link></>
+                            <>{t('auth.noAccount')} <Link to="/register">{t('auth.signUpHere')}</Link></>
                         )}
                     </p>
                     {role === 'caretaker' && (
                         <p className="form-footer-text" style={{ marginTop: '0.5rem' }}>
-                            Want to list &amp; manage a hostel? <Link to="/register/caretaker">Add Your Hostel</Link> — fill in your account, hostel and subscription in one step.
+                            {t('auth.wantToList')} <Link to="/register/caretaker">{t('auth.addYourHostelLink')}</Link>{t('auth.fillInOneStep')}
                         </p>
                     )}
                 </form>

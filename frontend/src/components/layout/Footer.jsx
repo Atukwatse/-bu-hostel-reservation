@@ -1,9 +1,11 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 const Footer = () => {
+    const { t } = useTranslation();
     return (
         <footer>
-            <p>&copy; {new Date().getFullYear()} Bugema University Hostel Reservation System.</p>
+            <p>{t('footer.copyright', { year: new Date().getFullYear() })}</p>
         </footer>
     );
 };

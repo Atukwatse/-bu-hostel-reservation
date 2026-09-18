@@ -49,7 +49,24 @@
     "safeSecure": "Emirembe & Okukuumibwa",
     "safeSecureDesc": "Okukuumibwa okujjudde, CCTV.",
     "wifiIncluded": "Wi-Fi Eriwo",
-    "wifiDesc": "Internet ey'amaanyi ejejuma."
+    "wifiDesc": "Internet ey'amaanyi ejejuma.",
+    "badge": "Embuga Engerekera eya Yunivasite Bugema",
+    "trustSecure": "Okukayinza okukuumye mu nttanet",
+    "trustVerified": "Ebisulo ebikakasiddwa",
+    "trustSupport": "Obuwaabi bwa campus obusingana 24/7",
+    "stepsEyebrow": "Enkola Enangu",
+    "stepsTitle": "Bwe Kikola",
+    "stepsSubtitle": "Funa ekisenge kyo mu mikolo esatu esiimply.",
+    "step1Title": "Laba Ebisulo",
+    "step1Desc": "Geerageranya ebisulo ng'olaba ekikula, omuwendo n'ekifo ku campus.",
+    "step2Title": "Teekirayo Ekisenge",
+    "step2Desc": "Londa ekisenge, tereka eifoto y'efuleege, osasule 50% y'ekuuma.",
+    "step3Title": "Yingira",
+    "step3Desc": "Kkirizibwa omukuumi n'omukulu, oluvannyuma oyingire mu kisulo kyawomaalama.",
+    "featuresHeading": "Bye wetaaga byonna, mu kifo kimu",
+    "featuresSubtitle": "Tufuula okukayinza okwangu, okukuumye era okutali buzibu.",
+    "ctaTitle": "Oyagala okufuna ekifo kyo ku campus?",
+    "ctaSubtitle": "Gatta ku bayizi ab'amaaze okukayinza ebisenge byabwe ku nttanet."
   },
   "hostels": {
     "heroTitle": "Ebisulo Ebiriko",
@@ -245,6 +262,13 @@
     "enterValidKinPhone": "Tukusaba wandika ennamba ya ssimu etukirira (namba zokka).",
     "profileUpdated": "Endagiriro yo efooleddwa!",
     "updateFailed": "Okufuula kwonna: ",
+    "personalDetails": "EBIFA KU MUNTU",
+    "gender": "Ekikula",
+    "selectGender": "Salawo ekikula",
+    "male": "Kintu",
+    "female": "Kikazi",
+    "course": "Emmaka / Pulogiraamu",
+    "selectCourse": "Salawo emmaka",
     "year1": "Omwaka 1",
     "year2": "Omwaka 2",
     "year3": "Omwaka 3",
@@ -406,7 +430,9 @@
   "language": {
     "English": "Lungereza",
     "Luganda": "Luganda",
-    "Chinese": "Chinawatike"
+    "Chinese": "Chinawatike",
+    "French": "Lufalansa",
+    "Kiswahili": "Kiswahili"
   },
   "common": {
     "loading": "Okutikka...",

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api, API_CONFIG } from '../services/api';
 import '../Inquiry.css';
 
 const Inquiry = () => {
+    const { t } = useTranslation();
     const [formData, setFormData] = useState({
         name: '', email: '', hostel: '', type: 'inquiry', rating: '', message: ''
     });
@@ -16,7 +18,6 @@ const Inquiry = () => {
     ]);
 
     useEffect(() => {
-        // Load hostels for dropdown
         const hostelData = [
             'Bensdorf Hostel',
             'SL Hostel', 
@@ -36,7 +37,7 @@ const Inquiry = () => {
         e.preventDefault();
         try {
             await api.post(API_CONFIG.INQUIRIES.CREATE, formData);
-            alert("Message Sent successfully!");
+            alert(t('inquiry.messageSent'));
             setFormData({ name: '', email: '', hostel: '', type: 'inquiry', rating: '', message: '' });
         } catch (err) {
             console.warn('API down, pretending success', err);
@@ -51,39 +52,39 @@ const Inquiry = () => {
                 {/* Left Side */}
                 <div className="feedback-left">
                     <div className="form-container">
-                        <h2>Drop us a message</h2>
+                        <h2>{t('inquiry.dropMessage')}</h2>
                         <form onSubmit={handleSubmit} className="vertical-form">
-                            <label htmlFor="name">Name</label>
+                            <label htmlFor="name">{t('inquiry.name')}</label>
                             <input type="text" id="name" value={formData.name} onChange={handleChange} required />
 
-                            <label htmlFor="email">Email</label>
+                            <label htmlFor="email">{t('inquiry.email')}</label>
                             <input type="email" id="email" value={formData.email} onChange={handleChange} required />
 
-                            <label htmlFor="hostel">Select Hostel</label>
+                            <label htmlFor="hostel">{t('inquiry.selectHostel')}</label>
                             <select id="hostel" value={formData.hostel} onChange={handleChange}>
-                                <option value="">General Inquiry</option>
+                                <option value="">{t('inquiry.generalInquiry')}</option>
                                 {hostels.map(hostel => (
                                     <option key={hostel} value={hostel}>{hostel}</option>
                                 ))}
                             </select>
 
-                            <label htmlFor="type">Message Type</label>
+                            <label htmlFor="type">{t('inquiry.messageType')}</label>
                             <select id="type" value={formData.type} onChange={handleChange} required>
-                                <option value="inquiry">General Inquiry</option>
-                                <option value="feedback">System Feedback / Rating</option>
+                                <option value="inquiry">{t('inquiry.generalInquiry')}</option>
+                                <option value="feedback">{t('inquiry.systemFeedback')}</option>
                             </select>
 
                             {formData.type === 'feedback' && (
                                 <div id="ratingSection" style={{ marginTop: '1rem' }}>
-                                    <label htmlFor="rating">Rating (1-5)</label>
+                                    <label htmlFor="rating">{t('inquiry.rating')}</label>
                                     <input type="number" id="rating" min="1" max="5" placeholder="e.g. 5" value={formData.rating} onChange={handleChange} required={formData.type==='feedback'} />
                                 </div>
                             )}
 
-                            <label htmlFor="message">Message or Feedback</label>
+                            <label htmlFor="message">{t('inquiry.messageOrFeedback')}</label>
                             <textarea id="message" rows="5" value={formData.message} onChange={handleChange} required></textarea>
 
-                            <button type="submit" className="primary-btn">Send Message</button>
+                            <button type="submit" className="primary-btn">{t('inquiry.sendMessage')}</button>
                         </form>
                     </div>
                 </div>
@@ -91,8 +92,8 @@ const Inquiry = () => {
                 {/* Right Side */}
                 <div className="feedback-right">
                     <div className="caretakers-contact">
-                        <h3>Hostel Caretakers</h3>
-                        <p>Contact any of our hostel caretakers for immediate assistance</p>
+                        <h3>{t('inquiry.hostelCaretakers')}</h3>
+                        <p>{t('inquiry.contactAssistance')}</p>
                         <div className="caretakers-grid" id="caretakersList">
                             {caretakers.map((caretaker, index) => (
                                 <div key={index} className="caretaker-card">

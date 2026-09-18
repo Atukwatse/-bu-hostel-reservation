@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { api, API_CONFIG } from '../services/api';
 import { PhoneInput, digitsOnly, isValidPhoneNumber } from '../components/PhoneInput';
 
 const Register = () => {
     const navigate = useNavigate();
+    const { t } = useTranslation();
     const [formData, setFormData] = useState({
         name: '', email: '', phone: '', countryCode: '+256',
         kinName: '', kinPhone: '', kinCountryCode: '+256',
@@ -20,13 +22,13 @@ const Register = () => {
     const handleRegister = async (e) => {
         e.preventDefault();
         if (formData.password !== formData.confirmPassword) {
-            alert('Passwords do not match!');
+            alert(t('auth.passwordsNoMatch'));
             return;
         }
 
         const trimmedName = formData.name.trim();
         if (trimmedName.split(/\s+/).length < 2) {
-            alert('Please enter your full name (at least two names).');
+            alert(t('auth.enterFullName'));
             return;
         }
 
@@ -34,11 +36,11 @@ const Register = () => {
         const phone = digitsOnly(formData.phone);
         const kinPhone = digitsOnly(formData.kinPhone);
         if (!isValidPhoneNumber(phone, formData.countryCode)) {
-            alert('Please enter a valid phone number (digits only, matching the selected country code).');
+            alert(t('auth.enterValidPhone'));
             return;
         }
         if (!isValidPhoneNumber(kinPhone, formData.kinCountryCode)) {
-            alert('Please enter a valid next of kin phone number (digits only, matching the selected country code).');
+            alert(t('auth.enterValidKinPhone'));
             return;
         }
 
@@ -65,29 +67,29 @@ const Register = () => {
             api.setToken(response.token);
             localStorage.setItem('currentUser', JSON.stringify(response.user));
             
-            alert('Account created successfully! You are now logged in.');
+            alert(t('auth.accountCreated'));
             window.location.href = '/';
         } catch (error) {
             console.error('Registration error:', error);
-            alert(`Registration failed: ${error.message}`);
+            alert(t('auth.registrationFailed') + error.message);
         }
     };
 
     return (
         <section id="create-account" className="page-section active">
             <div className="form-container">
-                <h2>Sign Up</h2>
-                <p style={{ marginBottom: '20px', fontSize: '0.95rem', color: '#64748b' }}>Join BU Online Hostel Booking</p>
+                <h2>{t('auth.signUp')}</h2>
+                <p style={{ marginBottom: '20px', fontSize: '0.95rem', color: '#64748b' }}>{t('auth.joinBU')}</p>
                 <form onSubmit={handleRegister} className="vertical-form">
                     
-                    <h3 className="form-section-heading">PERSONAL DETAILS</h3>
-                    <label htmlFor="name">Name</label>
-                    <input type="text" id="name" placeholder="e.g. John Mukasa" value={formData.name} onChange={handleChange} required />
+                    <h3 className="form-section-heading">{t('auth.personalDetails')}</h3>
+                    <label htmlFor="name">{t('auth.name')}</label>
+                    <input type="text" id="name" placeholder={t('auth.namePlaceholder')} value={formData.name} onChange={handleChange} required />
 
-                    <label htmlFor="email">Email Address</label>
-                    <input type="email" id="email" placeholder="e.g. john.mukasa@gmail.com" value={formData.email} onChange={handleChange} required />
+                    <label htmlFor="email">{t('auth.emailAddress')}</label>
+                    <input type="email" id="email" placeholder={t('auth.emailPlaceholder')} value={formData.email} onChange={handleChange} required />
 
-                    <label htmlFor="phone">Phone Number</label>
+                    <label htmlFor="phone">{t('auth.phoneNumber')}</label>
                     <PhoneInput
                         id="phone"
                         value={formData.phone}
@@ -97,10 +99,10 @@ const Register = () => {
                         countryCodeId="countryCode"
                     />
 
-                    <label htmlFor="kinName">Next of Kin Name</label>
-                    <input type="text" id="kinName" placeholder="e.g. Jane Mukasa" value={formData.kinName} onChange={handleChange} required />
+                    <label htmlFor="kinName">{t('auth.nextOfKinName')}</label>
+                    <input type="text" id="kinName" placeholder={t('auth.kinNamePlaceholder')} value={formData.kinName} onChange={handleChange} required />
 
-                    <label htmlFor="kinPhone">Next of Kin Contact</label>
+                    <label htmlFor="kinPhone">{t('auth.nextOfKinContact')}</label>
                     <PhoneInput
                         id="kinPhone"
                         value={formData.kinPhone}
@@ -110,17 +112,17 @@ const Register = () => {
                         countryCodeId="kinCountryCode"
                     />
 
-                    <h3 className="form-section-heading">ACADEMIC INFO</h3>
-                    <label htmlFor="gender">Gender</label>
+                    <h3 className="form-section-heading">{t('auth.academicInfo')}</h3>
+                    <label htmlFor="gender">{t('auth.gender')}</label>
                     <select id="gender" value={formData.gender} onChange={handleChange} required>
-                        <option value="">Select gender</option>
+                        <option value="">{t('auth.selectGender')}</option>
                         <option value="Male">Male</option>
                         <option value="Female">Female</option>
                     </select>
                     
-                    <label htmlFor="course">Course / Programme</label>
+                    <label htmlFor="course">{t('auth.course')}</label>
                     <select id="course" value={formData.course} onChange={handleChange} required>
-                        <option value="">Select course</option>
+                        <option value="">{t('auth.selectCourse')}</option>
                         <option value="Bsc Computer Science">Bsc Computer Science</option>
                         <option value="Bsc Information Technology">Bsc Information Technology</option>
                         <option value="Business Administration">Business Administration</option>
@@ -129,14 +131,14 @@ const Register = () => {
                         <option value="Other">Other</option>
                     </select>
 
-                    <h3 className="form-section-heading">SECURITY</h3>
-                    <label htmlFor="password">Password</label>
+                    <h3 className="form-section-heading">{t('auth.security')}</h3>
+                    <label htmlFor="password">{t('auth.password')}</label>
                     <div style={{ position: 'relative', width: '100%', marginBottom: '15px' }}>
                         <input 
                             type={showPassword ? "text" : "password"} 
                             id="password" 
                             minLength="8" 
-                            placeholder="e.g. SecurePass123! (Min 8 characters)" 
+                            placeholder={t('auth.passwordPlaceholderRegister')} 
                             value={formData.password} 
                             onChange={handleChange} 
                             required 
@@ -146,20 +148,20 @@ const Register = () => {
                             type="button" 
                             onClick={() => setShowPassword(!showPassword)}
                             style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', padding: 0 }}
-                            aria-label={showPassword ? "Hide password" : "Show password"}
-                            title={showPassword ? "Hide password" : "Show password"}
+                            aria-label={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+                            title={showPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                         >
                             {showPassword ? "🙈" : "👁️"}
                         </button>
                     </div>
                     
-                    <label htmlFor="confirmPassword">Confirm Password</label>
+                    <label htmlFor="confirmPassword">{t('auth.confirmPassword')}</label>
                     <div style={{ position: 'relative', width: '100%', marginBottom: '20px' }}>
                         <input 
                             type={showConfirmPassword ? "text" : "password"} 
                             id="confirmPassword" 
                             minLength="8" 
-                            placeholder="e.g. SecurePass123!" 
+                            placeholder={t('auth.confirmPasswordPlaceholder')} 
                             value={formData.confirmPassword} 
                             onChange={handleChange} 
                             required 
@@ -169,15 +171,15 @@ const Register = () => {
                             type="button" 
                             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                             style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', padding: 0 }}
-                            aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                            title={showConfirmPassword ? "Hide password" : "Show password"}
+                            aria-label={showConfirmPassword ? t('auth.hidePassword') : t('auth.showPassword')}
+                            title={showConfirmPassword ? t('auth.hidePassword') : t('auth.showPassword')}
                         >
                             {showConfirmPassword ? "🙈" : "👁️"}
                         </button>
                     </div>
 
-                    <button type="submit" className="primary-btn black-btn">Sign Up</button>
-                    <p className="form-footer-text">Already have an account? <Link to="/login">Sign in</Link></p>
+                    <button type="submit" className="primary-btn black-btn">{t('auth.signUp')}</button>
+                    <p className="form-footer-text">{t('auth.alreadyHaveAccount')} <Link to="/login">{t('auth.signInLink')}</Link></p>
                 </form>
             </div>
         </section>

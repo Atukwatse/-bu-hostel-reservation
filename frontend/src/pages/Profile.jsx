@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { api, API_CONFIG } from '../services/api';
 import { PhoneInput, digitsOnly, isValidPhoneNumber } from '../components/PhoneInput';
 
 
 const Profile = () => {
     const navigate = useNavigate();
+    const { t } = useTranslation();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState(null);
@@ -34,7 +36,7 @@ const Profile = () => {
                     kinCountryCode: user.next_of_kin_country_code || '+256',
                 });
             } catch (error) {
-                setMessage({ type: 'error', text: `Failed to load your profile: ${error.message}` });
+                setMessage({ type: 'error', text: `${t('profile.profileLoadError')}${error.message}` });
             } finally {
                 setLoading(false);
             }
@@ -51,16 +53,16 @@ const Profile = () => {
         setMessage(null);
 
         if (`${formData.firstName} ${formData.lastName}`.trim().split(/\s+/).length < 2) {
-            setMessage({ type: 'error', text: 'Please provide your full name (at least two names).' });
+            setMessage({ type: 'error', text: t('profile.enterFullName') });
             return;
         }
 
         if (!isValidPhoneNumber(digitsOnly(formData.phone), formData.countryCode)) {
-            setMessage({ type: 'error', text: 'Please enter a valid phone number (digits only, matching the selected country code).' });
+            setMessage({ type: 'error', text: t('profile.enterValidPhone') });
             return;
         }
         if (formData.kinPhone.trim() && !isValidPhoneNumber(digitsOnly(formData.kinPhone), formData.kinCountryCode)) {
-            setMessage({ type: 'error', text: 'Please enter a valid next of kin phone number (digits only, matching the selected country code).' });
+            setMessage({ type: 'error', text: t('profile.enterValidKinPhone') });
             return;
         }
 
@@ -85,13 +87,12 @@ const Profile = () => {
 
             const updatedUser = await api.patch(API_CONFIG.USERS.UPDATE_PROFILE, payload);
 
-            // Keep localStorage in sync so the rest of the app shows fresh data
             localStorage.setItem('currentUser', JSON.stringify(updatedUser));
 
-            setMessage({ type: 'success', text: 'Profile updated successfully!' });
+            setMessage({ type: 'success', text: t('profile.profileUpdated') });
             window.scrollTo({ top: 0, behavior: 'smooth' });
         } catch (error) {
-            setMessage({ type: 'error', text: `Update failed: ${error.message}` });
+            setMessage({ type: 'error', text: `${t('profile.updateFailed')}${error.message}` });
         } finally {
             setSaving(false);
         }
@@ -101,9 +102,9 @@ const Profile = () => {
         return (
             <section className="page-section active">
                 <div className="form-container" style={{ textAlign: 'center' }}>
-                    <h2>My Profile</h2>
-                    <p style={{ margin: '20px 0', color: '#64748b' }}>Please sign in to view and update your profile.</p>
-                    <button className="primary-btn black-btn" onClick={() => navigate('/login')}>Sign In</button>
+                    <h2>{t('profile.myProfile')}</h2>
+                    <p style={{ margin: '20px 0', color: '#64748b' }}>{t('profile.pleaseSignIn')}</p>
+                    <button className="primary-btn black-btn" onClick={() => navigate('/login')}>{t('profile.signIn')}</button>
                 </div>
             </section>
         );
@@ -113,8 +114,8 @@ const Profile = () => {
         return (
             <section className="page-section active">
                 <div className="form-container" style={{ textAlign: 'center' }}>
-                    <h2>My Profile</h2>
-                    <p style={{ color: '#64748b' }}>Loading your profile...</p>
+                    <h2>{t('profile.myProfile')}</h2>
+                    <p style={{ color: '#64748b' }}>{t('profile.loading')}</p>
                 </div>
             </section>
         );
@@ -123,8 +124,8 @@ const Profile = () => {
     return (
         <section className="page-section active">
             <div className="form-container">
-                <h2>My Profile</h2>
-                <p style={{ marginBottom: '20px', fontSize: '0.95rem', color: '#64748b' }}>View and update your personal details and next of kin information.</p>
+                <h2>{t('profile.myProfile')}</h2>
+                <p style={{ marginBottom: '20px', fontSize: '0.95rem', color: '#64748b' }}>{t('profile.subtitle')}</p>
 
                 {message && (
                     <div
@@ -146,16 +147,16 @@ const Profile = () => {
                 <form onSubmit={handleSave} className="vertical-form">
                     <h3 className="form-section-heading">PERSONAL DETAILS</h3>
 
-                    <label htmlFor="firstName">First Name</label>
-                    <input type="text" id="firstName" placeholder="e.g. John" value={formData.firstName} onChange={handleChange} required />
+                    <label htmlFor="firstName">{t('profile.firstName')}</label>
+                    <input type="text" id="firstName" placeholder={t('profile.firstNamePlaceholder')} value={formData.firstName} onChange={handleChange} required />
 
-                    <label htmlFor="lastName">Last Name</label>
-                    <input type="text" id="lastName" placeholder="e.g. Mukasa" value={formData.lastName} onChange={handleChange} required />
+                    <label htmlFor="lastName">{t('profile.lastName')}</label>
+                    <input type="text" id="lastName" placeholder={t('profile.lastNamePlaceholder')} value={formData.lastName} onChange={handleChange} required />
 
-                    <label htmlFor="email">Email Address</label>
-                    <input type="email" id="email" placeholder="e.g. john.mukasa@gmail.com" value={formData.email} onChange={handleChange} required />
+                    <label htmlFor="email">{t('profile.emailAddress')}</label>
+                    <input type="email" id="email" placeholder={t('profile.emailPlaceholder')} value={formData.email} onChange={handleChange} required />
 
-                    <label htmlFor="phone">Phone Number</label>
+                    <label htmlFor="phone">{t('profile.phoneNumber')}</label>
                     <PhoneInput
                         id="phone"
                         value={formData.phone}
@@ -185,20 +186,20 @@ const Profile = () => {
                         <option value="Other">Other</option>
                     </select>
 
-                    <label htmlFor="yearOfStudy">Year of Study</label>
+                    <label htmlFor="yearOfStudy">{t('profile.yearOfStudy')}</label>
                     <select id="yearOfStudy" value={formData.yearOfStudy} onChange={handleChange}>
-                        <option value="">Not specified</option>
-                        <option value="1">Year 1</option>
-                        <option value="2">Year 2</option>
-                        <option value="3">Year 3</option>
-                        <option value="4">Year 4</option>
-                        <option value="5">Year 5</option>
+                        <option value="">{t('profile.notSpecified')}</option>
+                        <option value="1">{t('profile.year1')}</option>
+                        <option value="2">{t('profile.year2')}</option>
+                        <option value="3">{t('profile.year3')}</option>
+                        <option value="4">{t('profile.year4')}</option>
+                        <option value="5">{t('profile.year5')}</option>
                     </select>
 
-                    <h3 className="form-section-heading">NEXT OF KIN (EMERGENCY CONTACT)</h3>
+                    <h3 className="form-section-heading">{t('profile.nextOfKin')}</h3>
 
                     <label htmlFor="kinName">Next of Kin Name</label>
-                    <input type="text" id="kinName" placeholder="e.g. Jane Mukasa" value={formData.kinName} onChange={handleChange} />
+                    <input type="text" id="kinName" placeholder={t('profile.kinNamePlaceholder')} value={formData.kinName} onChange={handleChange} />
 
                     <label htmlFor="kinPhone">Next of Kin Contact</label>
                     <PhoneInput
@@ -211,7 +212,7 @@ const Profile = () => {
                     />
 
                     <button type="submit" className="primary-btn black-btn" disabled={saving}>
-                        {saving ? 'Saving...' : 'Save Changes'}
+                        {saving ? t('profile.saving') : t('profile.saveChanges')}
                     </button>
                 </form>
             </div>

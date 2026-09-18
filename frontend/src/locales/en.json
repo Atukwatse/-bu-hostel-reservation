@@ -49,7 +49,24 @@
     "safeSecure": "Safe & Secure",
     "safeSecureDesc": "24-hour security, CCTV.",
     "wifiIncluded": "Wi-Fi Included",
-    "wifiDesc": "High-speed internet."
+    "wifiDesc": "High-speed internet.",
+    "badge": "Official Bugema University Portal",
+    "trustSecure": "Secure online booking",
+    "trustVerified": "Verified hostel listings",
+    "trustSupport": "24/7 campus support",
+    "stepsEyebrow": "Simple Process",
+    "stepsTitle": "How It Works",
+    "stepsSubtitle": "Find your room in three simple steps.",
+    "step1Title": "Browse Hostels",
+    "step1Desc": "Compare hostels by gender, price, and location across campus.",
+    "step2Title": "Reserve a Room",
+    "step2Desc": "Pick a room, upload your passport photo, and pay the 50% deposit.",
+    "step3Title": "Move In",
+    "step3Desc": "Get approved by the caretaker and admin, then check in and enjoy your stay.",
+    "featuresHeading": "Everything you need, in one place",
+    "featuresSubtitle": "We make hostel booking simple, safe, and stress-free.",
+    "ctaTitle": "Ready to find your place on campus?",
+    "ctaSubtitle": "Join students who already booked their rooms online."
   },
   "hostels": {
     "heroTitle": "Available Hostels",
@@ -245,6 +262,13 @@
     "enterValidKinPhone": "Please enter a valid next of kin phone number (digits only, matching the selected country code).",
     "profileUpdated": "Profile updated successfully!",
     "updateFailed": "Update failed: ",
+    "personalDetails": "PERSONAL DETAILS",
+    "gender": "Gender",
+    "selectGender": "Select gender",
+    "male": "Male",
+    "female": "Female",
+    "course": "Course / Programme",
+    "selectCourse": "Select course",
     "year1": "Year 1",
     "year2": "Year 2",
     "year3": "Year 3",
@@ -406,7 +430,9 @@
   "language": {
     "English": "English",
     "Luganda": "Luganda",
-    "Chinese": "中文"
+    "Chinese": "中文",
+    "French": "Français",
+    "Kiswahili": "Kiswahili"
   },
   "common": {
     "loading": "Loading...",
