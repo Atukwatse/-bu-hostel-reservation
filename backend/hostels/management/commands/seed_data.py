@@ -1,4 +1,4 @@
-from django.core.management.base import BaseCommand
+﻿from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from hostels.models import Hostel, Room, Review
 from decimal import Decimal
@@ -89,7 +89,7 @@ class Command(BaseCommand):
                 'description': 'A comfortable and secure female hostel located within the university premises.',
                 'facilities': 'Wi-Fi, Laundry, Study Room, Security, Kitchen, Common Room',
                 'location': 'Bugema University Main Campus',
-                'image': '/IMAGES/bensdorf.png'
+                'image': 'hostel_images/bensdorf.png'
             },
             {
                 'name': 'SL Hostel',
@@ -104,7 +104,7 @@ class Command(BaseCommand):
                 'description': 'Modern male hostel with excellent facilities and 24/7 security.',
                 'facilities': 'Wi-Fi, Gym, Study Room, Security, Kitchen, Sports Ground',
                 'location': 'Bugema University Main Campus',
-                'image': '/IMAGES/sl.png'
+                'image': 'hostel_images/sl.png'
             },
             {
                 'name': 'Seattle Hostel',
@@ -119,7 +119,7 @@ class Command(BaseCommand):
                 'description': 'Affordable male hostel with basic amenities.',
                 'facilities': 'Wi-Fi, Security, Common Room, Kitchen',
                 'location': 'Bugema University Main Campus',
-                'image': '/IMAGES/seatle.png'
+                'image': 'hostel_images/seatle.png'
             },
             {
                 'name': 'Clifford Hostel',
@@ -134,7 +134,7 @@ class Command(BaseCommand):
                 'description': 'Premium female hostel with modern facilities and excellent security.',
                 'facilities': 'Wi-Fi, Laundry, Study Room, Security, Kitchen, Common Room, Gym',
                 'location': 'Bugema University Main Campus',
-                'image': '/IMAGES/clifford.png'
+                'image': 'hostel_images/clifford.png'
             },
             {
                 'name': 'Cityview Hostel',
@@ -149,7 +149,7 @@ class Command(BaseCommand):
                 'description': 'Private male hostel with city views and modern amenities.',
                 'facilities': 'Wi-Fi, Laundry, Study Room, Security, Kitchen, Balcony',
                 'location': 'Near Bugema University',
-                'image': '/IMAGES/cityview.png'
+                'image': 'hostel_images/cityview.png'
             },
             {
                 'name': 'Rose Hostel',
@@ -164,7 +164,7 @@ class Command(BaseCommand):
                 'description': 'Affordable private female hostel with homely atmosphere.',
                 'facilities': 'Wi-Fi, Laundry, Security, Kitchen, Common Room',
                 'location': 'Near Bugema University',
-                'image': '/IMAGES/rose.png'
+                'image': 'hostel_images/rose.png'
             },
             {
                 'name': 'Endeavor Hostel',
@@ -179,7 +179,7 @@ class Command(BaseCommand):
                 'description': 'Mixed hostel with separate wings for male and female students.',
                 'facilities': 'Wi-Fi, Laundry, Study Room, Security, Kitchen, Common Room, Sports',
                 'location': 'Near Bugema University',
-                'image': '/IMAGES/endvor.png'
+                'image': 'hostel_images/endvor.png'
             },
             {
                 'name': 'Kernmol Hostel',
@@ -194,7 +194,7 @@ class Command(BaseCommand):
                 'description': 'Budget-friendly private male hostel with essential facilities.',
                 'facilities': 'Wi-Fi, Security, Common Room, Kitchen',
                 'location': 'Near Bugema University',
-                'image': '/IMAGES/kenmor.png'
+                'image': 'hostel_images/kenmor.png'
             }
         ]
 
