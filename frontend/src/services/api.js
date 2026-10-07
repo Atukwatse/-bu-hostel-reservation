@@ -26,6 +26,17 @@ export const API_CONFIG = {
         ONBOARD: '/hostels/hostels/onboard/',
         SEARCH: '/hostels/hostels/search/',
         BY_TYPE: '/hostels/hostels/by_type/',
+        MY_HOSTEL: '/hostels/hostels/my_hostel/',
+        SELECT_ADMIN: (id) => `/hostels/hostels/${id}/select_admin/`,
+        ONBOARD: '/hostels/hostels/onboard/',
+        MY_SUBSCRIPTION: '/hostels/hostels/my_subscription/',
+    },
+
+    // Hostel subscription endpoints
+    SUBSCRIPTIONS: {
+        LIST: '/hostels/subscriptions/',
+        DETAIL: (id) => `/hostels/subscriptions/${id}/`,
+        ACTIVATE: (id) => `/hostels/subscriptions/${id}/activate/`,
     },
     
     // Room endpoints
@@ -53,6 +64,14 @@ export const API_CONFIG = {
         LOGIN_HISTORY: '/users/users/login_history/',
         STATS: '/users/users/stats/',
         CARETAKERS_CREATE: '/users/users/caretakers/',
+    },
+
+    // In-app notification endpoints
+    NOTIFICATIONS: {
+        LIST: '/users/notifications/',
+        UNREAD_COUNT: '/users/notifications/unread_count/',
+        MARK_READ: (id) => `/users/notifications/${id}/read/`,
+        MARK_ALL_READ: '/users/notifications/read_all/',
     },
     
     // Reservation endpoints
@@ -161,9 +180,14 @@ class ApiClient {
                 
                 let errorMessage = errorData.detail || errorData.message;
                 
+                if (!errorMessage && Array.isArray(errorData.non_field_errors)) {
+                    errorMessage = errorData.non_field_errors.join(' ');
+                }
+                
                 if (!errorMessage && Object.keys(errorData).length > 0) {
                     const errorMessages = [];
                     for (const [key, value] of Object.entries(errorData)) {
+                        if (key === 'non_field_errors') continue;
                         const valStr = Array.isArray(value) ? value.join(', ') : value;
                         errorMessages.push(`${key}: ${valStr}`);
                     }

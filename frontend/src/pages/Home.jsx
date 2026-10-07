@@ -9,6 +9,7 @@ const Home = () => {
     const { t } = useTranslation();
     const [currentUser, setCurrentUser] = useState(null);
     const [studentReservation, setStudentReservation] = useState(null);
+    const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -16,8 +17,19 @@ const Home = () => {
         if (user) {
             setCurrentUser(user);
             fetchStudentInfo(user);
+            fetchNotifications();
         }
     }, []);
+
+    const fetchNotifications = async () => {
+        try {
+            const res = await api.get(API_CONFIG.NOTIFICATIONS.LIST);
+            const items = (res.results || res || []).slice(0, 5);
+            setNotifications(items);
+        } catch (error) {
+            console.error('Error fetching notifications:', error);
+        }
+    };
 
     const fetchStudentInfo = async (user) => {
         try {
@@ -183,6 +195,34 @@ const Home = () => {
                                             >
                                                 ➕ {t('home.addNextOfKin')}
                                             </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="dashboard-card">
+                                    <h3 style={{ color: '#1e3a8a', marginBottom: '1rem', fontSize: '1.2rem' }}>🔔 {t('home.notifications')}</h3>
+                                    {notifications.length === 0 ? (
+                                        <p style={{ color: '#64748b', fontStyle: 'italic' }}>{t('home.noNotifications')}</p>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                            {notifications.map(n => (
+                                                <div key={n.id} style={{
+                                                    padding: '0.75rem',
+                                                    borderRadius: '6px',
+                                                    border: '1px solid #e2e8f0',
+                                                    background: n.is_read ? '#ffffff' : '#eff6ff',
+                                                }}>
+                                                    <p style={{ fontWeight: 600, fontSize: '0.9rem', margin: 0, color: '#1e3a8a' }}>
+                                                        {n.title}
+                                                    </p>
+                                                    <p style={{ fontSize: '0.85rem', color: '#475569', margin: '0.25rem 0 0', lineHeight: 1.4 }}>
+                                                        {n.message}
+                                                    </p>
+                                                    <p style={{ fontSize: '0.72rem', color: '#94a3b8', margin: '0.25rem 0 0' }}>
+                                                        {n.time_ago}
+                                                    </p>
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
                                 </div>

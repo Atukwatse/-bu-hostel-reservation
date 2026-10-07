@@ -85,3 +85,31 @@ class LoginActivity(models.Model):
 
     def __str__(self):
         return f"{self.user.name} - {self.login_time}"
+
+
+class Notification(models.Model):
+    CATEGORY_CHOICES = [
+        ('booking', 'Booking'),
+        ('payment', 'Payment'),
+        ('general', 'General'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='general')
+    link = models.CharField(max_length=500, blank=True, default='')
+    reservation = models.ForeignKey(
+        'reservations.Reservation', on_delete=models.SET_NULL, blank=True, null=True,
+        related_name='notifications'
+    )
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Notification'
+        verbose_name_plural = 'Notifications'
+
+    def __str__(self):
+        return f"{self.user.name} - {self.title}"

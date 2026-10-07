@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { displayUserName } from '../../utils/userDisplayName';
 import { useTranslation } from 'react-i18next';
 import LanguageSelector from '../LanguageSelector';
+import NotificationBell from '../NotificationBell';
 
 const Navbar = () => {
     const location = useLocation();
@@ -80,6 +81,7 @@ const Navbar = () => {
                         </>
                     ) : (
                         <>
+                            <NotificationBell />
                             {['admin', 'caretaker'].includes(currentUser.role) && (
                                 <li>
                                     <Link 

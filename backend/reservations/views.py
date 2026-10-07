@@ -9,7 +9,11 @@ import logging
 import random
 import string as _stringutil
 from .models import Reservation, Payment, Inquiry, WaitingList
-from .emails import send_cancellation_email, send_booking_received_email, send_booking_confirmed_email
+from .emails import (
+    send_cancellation_email, send_booking_received_email, send_booking_confirmed_email,
+    send_caretaker_new_booking_email, send_caretaker_booking_cancelled_email,
+)
+from users.notifications import notify_user, notify_caretaker
 from .mobile_money import parse_mobile_money_message
 from .sms import (
     send_user_cancellation_notifications,
@@ -75,8 +79,32 @@ class ReservationViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         reservation = serializer.save()
 
-        # Notify the hostel admin that a new booking has been made
+        # Notify the hostel admin that a new booking has been made (SMS + WhatsApp)
         send_admin_new_booking_notification(reservation)
+
+        # Email the caretaker about the new booking
+        send_caretaker_new_booking_email(reservation)
+
+        # In-app notifications: caretaker gets a new booking alert,
+        # the student gets a "pending" confirmation notice
+        notify_caretaker(
+            reservation.hostel,
+            "New Booking Received",
+            f"{reservation.user.name} booked {reservation.hostel.name} "
+            f"({reservation.reservation_code}) and is waiting for review.",
+            category='booking',
+            link='/admin',
+            reservation=reservation,
+        )
+        notify_user(
+            reservation.user,
+            "Booking Received",
+            f"Your booking request at {reservation.hostel.name} "
+            f"({reservation.reservation_code}) has been received and is pending review.",
+            category='booking',
+            link='/',
+            reservation=reservation,
+        )
 
         # Notify the student that their booking request was received (email + SMS/WhatsApp)
         send_booking_received_email(reservation)
@@ -190,6 +218,17 @@ class ReservationViewSet(viewsets.ModelViewSet):
         send_booking_confirmed_email(reservation)
         send_student_booking_confirmed_notification(reservation)
 
+        # In-app notification for the student
+        notify_user(
+            reservation.user,
+            "Booking Confirmed",
+            f"Great news! Your booking at {reservation.hostel.name} "
+            f"({reservation.reservation_code}) has been confirmed.",
+            category='booking',
+            link='/',
+            reservation=reservation,
+        )
+
         return Response({
             'message': 'Payment approved. Transaction ID generated successfully.',
             'transaction_id': transaction_id,
@@ -244,7 +283,18 @@ class ReservationViewSet(viewsets.ModelViewSet):
         # Notify the student that their booking has been confirmed
         send_booking_confirmed_email(reservation)
         send_student_booking_confirmed_notification(reservation)
-        
+
+        # In-app notification for the student
+        notify_user(
+            reservation.user,
+            "Booking Confirmed",
+            f"Great news! Your booking at {reservation.hostel.name} "
+            f"({reservation.reservation_code}) has been confirmed.",
+            category='booking',
+            link='/',
+            reservation=reservation,
+        )
+
         return Response({'message': 'Reservation and payments confirmed successfully'})
 
     @action(detail=True, methods=['post'])
@@ -284,6 +334,29 @@ class ReservationViewSet(viewsets.ModelViewSet):
         
         # Send SMS + WhatsApp to the caretaker about the cancellation and refund
         send_caretaker_cancellation_notifications(reservation)
+
+        # Email the caretaker about the cancellation
+        send_caretaker_booking_cancelled_email(reservation)
+
+        # In-app notifications: student and caretaker both learn about the cancellation
+        notify_user(
+            reservation.user,
+            "Booking Cancelled",
+            f"Your booking at {reservation.hostel.name} "
+            f"({reservation.reservation_code}) has been cancelled.",
+            category='booking',
+            link='/',
+            reservation=reservation,
+        )
+        notify_caretaker(
+            reservation.hostel,
+            "Booking Cancelled",
+            f"{reservation.user.name}'s booking at {reservation.hostel.name} "
+            f"({reservation.reservation_code}) has been cancelled.",
+            category='booking',
+            link='/admin',
+            reservation=reservation,
+        )
         
         return Response({'message': 'Reservation cancelled successfully'})
 

@@ -124,10 +124,15 @@ class ApiClient {
                 
                 let errorMessage = errorData.detail || errorData.message || errorData.error;
                 
+                if (!errorMessage && Array.isArray(errorData.non_field_errors)) {
+                    errorMessage = errorData.non_field_errors.join(' ');
+                }
+                
                 // If it's a validation error object from Django
                 if (!errorMessage && Object.keys(errorData).length > 0) {
                     const errorMessages = [];
                     for (const [key, value] of Object.entries(errorData)) {
+                        if (key === 'non_field_errors') continue;
                         const valStr = Array.isArray(value) ? value.join(', ') : value;
                         errorMessages.push(`${key}: ${valStr}`);
                     }
@@ -206,10 +211,15 @@ class ApiClient {
                 
                 let errorMessage = errorData.detail || errorData.message || errorData.error;
                 
+                if (!errorMessage && Array.isArray(errorData.non_field_errors)) {
+                    errorMessage = errorData.non_field_errors.join(' ');
+                }
+                
                 // If it's a validation error object from Django
                 if (!errorMessage && Object.keys(errorData).length > 0) {
                     const errorMessages = [];
                     for (const [key, value] of Object.entries(errorData)) {
+                        if (key === 'non_field_errors') continue;
                         const valStr = Array.isArray(value) ? value.join(', ') : value;
                         errorMessages.push(`${key}: ${valStr}`);
                     }

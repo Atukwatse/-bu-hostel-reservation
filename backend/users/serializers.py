@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from .models import User, UserProfile, LoginActivity
+from django.utils import timezone
+from .models import User, UserProfile, LoginActivity, Notification
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -240,6 +241,30 @@ class LoginActivitySerializer(serializers.ModelSerializer):
             'user_agent', 'login_time', 'logout_time', 'is_successful'
         ]
         read_only_fields = ['user', 'ip_address', 'user_agent']
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    time_ago = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Notification
+        fields = [
+            'id', 'title', 'message', 'category', 'link', 'reservation',
+            'is_read', 'created_at', 'time_ago'
+        ]
+        read_only_fields = fields
+
+    def get_time_ago(self, obj):
+        delta = timezone.now() - obj.created_at
+        if delta.days > 0:
+            return f"{delta.days}d ago"
+        hours = delta.seconds // 3600
+        if hours > 0:
+            return f"{hours}h ago"
+        minutes = delta.seconds // 60
+        if minutes > 0:
+            return f"{minutes}m ago"
+        return "just now"
 
 
 class CaretakerRegisterSerializer(serializers.ModelSerializer):

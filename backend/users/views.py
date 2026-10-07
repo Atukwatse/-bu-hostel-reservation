@@ -7,11 +7,12 @@ from django.utils import timezone
 from django.db import models
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from .models import User, UserProfile, LoginActivity
+from .models import User, UserProfile, LoginActivity, Notification
 from hostels.models import Hostel
 from .serializers import (
     UserSerializer, UserRegistrationSerializer, UserLoginSerializer,
     UserUpdateSerializer, PasswordChangeSerializer, LoginActivitySerializer,
+    NotificationSerializer,
     CaretakerAdminCreateSerializer, CaretakerRegisterSerializer,
 )
 
@@ -112,6 +113,38 @@ class UserViewSet(viewsets.ModelViewSet):
             'last_login': user.last_login,
         }
         return Response(data)
+
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    """In-app notifications for the currently authenticated user."""
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        return Response(
+            {'error': 'Notifications are created by the system, not clients'},
+            status=status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+
+    @action(detail=False, methods=['get'])
+    def unread_count(self, request):
+        count = self.get_queryset().filter(is_read=False).count()
+        return Response({'count': count})
+
+    @action(detail=True, methods=['post'])
+    def read(self, request, pk=None):
+        notification = self.get_object()
+        notification.is_read = True
+        notification.save(update_fields=['is_read'])
+        return Response({'status': 'ok'})
+
+    @action(detail=False, methods=['post'])
+    def read_all(self, request):
+        self.get_queryset().filter(is_read=False).update(is_read=True)
+        return Response({'status': 'ok'})
 
 
 @api_view(['POST'])

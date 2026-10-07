@@ -13,6 +13,8 @@ const AdminDashboard = () => {
     const [reservations, setReservations] = useState([]);
     const [caretakers, setCaretakers] = useState([]);
     const [subscriptions, setSubscriptions] = useState([]);
+    const [notifications, setNotifications] = useState([]);
+    const [unreadNotifications, setUnreadNotifications] = useState(0);
     const [stats, setStats] = useState({ totalHostels: 0, students: 0, reservations: 0, available: 0 });
     const [showHostelModal, setShowHostelModal] = useState(false);
     const [showRoomModal, setShowRoomModal] = useState(false);
@@ -39,6 +41,7 @@ const AdminDashboard = () => {
     const [reservationSearchTerm, setReservationSearchTerm] = useState('');
     const [caretakerSearchTerm, setCaretakerSearchTerm] = useState('');
     const adminDataBootstrapped = useRef(false);
+    const caretakerLanded = useRef(false);
 
     const fetchAdminData = async ({ withSpinner = true } = {}) => {
         if (withSpinner) setLoading(true);
@@ -161,10 +164,54 @@ const AdminDashboard = () => {
         }
     }, [hostelScopeId]);
 
+    // A caretaker is taken straight into their own hostel interface - never asked
+    // to pick a hostel, because the system already knows which one they manage.
+    useEffect(() => {
+        if (!isAdmin && managedHostel && !caretakerLanded.current) {
+            caretakerLanded.current = true;
+            setActiveTab('manage-rooms');
+        }
+    }, [isAdmin, managedHostel]);
+
+    const fetchNotifications = async () => {
+        if (!API_CONFIG.NOTIFICATIONS?.LIST) return;
+        try {
+            const [listRes, countRes] = await Promise.all([
+                api.get(API_CONFIG.NOTIFICATIONS.LIST),
+                api.get(API_CONFIG.NOTIFICATIONS.UNREAD_COUNT),
+            ]);
+            setNotifications((listRes.results || listRes || []).slice(0, 10));
+            setUnreadNotifications(countRes.count || 0);
+        } catch (error) {
+            console.error('Failed to fetch notifications:', error);
+        }
+    };
+
+    const handleMarkNotificationRead = async (id) => {
+        try {
+            await api.post(API_CONFIG.NOTIFICATIONS.MARK_READ(id), {});
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+            setUnreadNotifications(prev => Math.max(0, prev - 1));
+        } catch (error) {
+            console.error('Failed to mark notification read:', error);
+        }
+    };
+
+    const handleMarkAllNotificationsRead = async () => {
+        try {
+            await api.post(API_CONFIG.NOTIFICATIONS.MARK_ALL_READ, {});
+            setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+            setUnreadNotifications(0);
+        } catch (error) {
+            console.error('Failed to mark all notifications read:', error);
+        }
+    };
+
     useEffect(() => {
         if (!adminDataBootstrapped.current) {
             adminDataBootstrapped.current = true;
             fetchAdminData({ withSpinner: true });
+            fetchNotifications();
             return;
         }
         fetchAdminData({ withSpinner: false });
@@ -540,6 +587,47 @@ const AdminDashboard = () => {
                                 <span className="card-desc">Collected</span>
                             </div>
                         </div>
+                        <div className="notifications-panel" style={{ marginBottom: '1.5rem', background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '1rem 1.25rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                                <h3 style={{ margin: 0, fontSize: '1.05rem' }}>
+                                    🔔 Notifications{' '}
+                                    {unreadNotifications > 0 && (
+                                        <span style={{ background: '#ef4444', color: '#fff', borderRadius: '999px', padding: '2px 8px', fontSize: '0.72rem', fontWeight: 700, marginLeft: '6px' }}>
+                                            {unreadNotifications} new
+                                        </span>
+                                    )}
+                                </h3>
+                                {unreadNotifications > 0 && (
+                                    <button className="btn-confirm" style={{ backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '0.3rem 0.75rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }} onClick={handleMarkAllNotificationsRead}>
+                                        Mark all read
+                                    </button>
+                                )}
+                            </div>
+                            {notifications.length === 0 ? (
+                                <p style={{ color: '#64748b', fontStyle: 'italic', fontSize: '0.9rem' }}>No notifications yet</p>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {notifications.map(n => (
+                                        <div
+                                            key={n.id}
+                                            onClick={() => !n.is_read && handleMarkNotificationRead(n.id)}
+                                            style={{
+                                                cursor: n.is_read ? 'default' : 'pointer',
+                                                padding: '0.6rem 0.75rem', borderRadius: '6px',
+                                                border: '1px solid #e2e8f0',
+                                                background: n.is_read ? '#ffffff' : '#eff6ff',
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                                                <strong style={{ fontSize: '0.9rem' }}>{n.title}</strong>
+                                                <span style={{ fontSize: '0.72rem', color: '#94a3b8', flexShrink: 0 }}>{n.time_ago}</span>
+                                            </div>
+                                            <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#475569' }}>{n.message}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                         <div className="admin-recent-activity">
                             <h3>Subscription Overview</h3>
                             <table className="admin-table">
@@ -607,6 +695,47 @@ const AdminDashboard = () => {
                             <strong>{stats.available}</strong>
                             <span className="card-desc">Open rooms</span>
                         </div>
+                    </div>
+                    <div className="notifications-panel" style={{ marginBottom: '1.5rem', background: '#fff', borderRadius: '8px', border: '1px solid #e2e8f0', padding: '1rem 1.25rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+                            <h3 style={{ margin: 0, fontSize: '1.05rem' }}>
+                                🔔 Notifications{' '}
+                                {unreadNotifications > 0 && (
+                                    <span style={{ background: '#ef4444', color: '#fff', borderRadius: '999px', padding: '2px 8px', fontSize: '0.72rem', fontWeight: 700, marginLeft: '6px' }}>
+                                        {unreadNotifications} new
+                                    </span>
+                                )}
+                            </h3>
+                            {unreadNotifications > 0 && (
+                                <button className="btn-confirm" style={{ backgroundColor: '#2563eb', color: 'white', border: 'none', padding: '0.3rem 0.75rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }} onClick={handleMarkAllNotificationsRead}>
+                                    Mark all read
+                                </button>
+                            )}
+                        </div>
+                        {notifications.length === 0 ? (
+                            <p style={{ color: '#64748b', fontStyle: 'italic', fontSize: '0.9rem' }}>No notifications yet</p>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                {notifications.map(n => (
+                                    <div
+                                        key={n.id}
+                                        onClick={() => !n.is_read && handleMarkNotificationRead(n.id)}
+                                        style={{
+                                            cursor: n.is_read ? 'default' : 'pointer',
+                                            padding: '0.6rem 0.75rem', borderRadius: '6px',
+                                            border: '1px solid #e2e8f0',
+                                            background: n.is_read ? '#ffffff' : '#eff6ff',
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                                            <strong style={{ fontSize: '0.9rem' }}>{n.title}</strong>
+                                            <span style={{ fontSize: '0.72rem', color: '#94a3b8', flexShrink: 0 }}>{n.time_ago}</span>
+                                        </div>
+                                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#475569' }}>{n.message}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                     <div className="admin-recent-activity">
                         <h3>Recent Activity</h3>
@@ -1106,34 +1235,48 @@ const AdminDashboard = () => {
                         </div>
                         
                         <div style={{ width: '100%', backgroundColor: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                            <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '600', color: '#475569' }}>Select Hostel to Manage Rooms:</label>
-                            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                                <select 
-                                    value={selectedManageHostel} 
-                                    onChange={(e) => setSelectedManageHostel(e.target.value)}
-                                    disabled={!!hostelScopeId}
-                                    style={{ width: '100%', maxWidth: '350px', padding: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '1rem', ...(hostelScopeId ? { background: '#f1f5f9', cursor: 'not-allowed' } : {}) }}
-                                >
-                                    <option value="">-- Choose a Hostel --</option>
-                                    {hostels.map(h => (
-                                        <option key={h.id} value={h.id}>{h.name}</option>
-                                    ))}
-                                </select>
-                                
-                                {currentHostel && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.5rem 1rem', background: 'white', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                                        {currentHostel.image ? (
-                                            <img src={currentHostel.image} alt={currentHostel.name} style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} />
-                                        ) : (
-                                            <div style={{ width: '50px', height: '50px', background: '#f1f5f9', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem' }}>No Image</div>
-                                        )}
-                                        <div>
-                                            <h4 style={{ margin: 0, fontSize: '0.95rem' }}>{currentHostel.name}</h4>
-                                            <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>{currentHostel.location || 'No location'}</p>
-                                        </div>
+                            {hostelScopeId ? (
+                                // Scoped caretaker: his/her hostel is already locked in.
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                                    <div>
+                                        <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#64748b' }}>Your Hostel</div>
+                                        <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#0f172a' }}>{currentHostel?.name || managedHostel?.name}</div>
                                     </div>
-                                )}
-                            </div>
+                                    {currentHostel?.location && (
+                                        <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>{currentHostel.location}</p>
+                                    )}
+                                </div>
+                            ) : (
+                                <>
+                                    <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '600', color: '#475569' }}>Select Hostel to Manage Rooms:</label>
+                                    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                        <select
+                                            value={selectedManageHostel}
+                                            onChange={(e) => setSelectedManageHostel(e.target.value)}
+                                            style={{ width: '100%', maxWidth: '350px', padding: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '1rem' }}
+                                        >
+                                            <option value="">-- Choose a Hostel --</option>
+                                            {hostels.map(h => (
+                                                <option key={h.id} value={h.id}>{h.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </>
+                            )}
+
+                            {hostelScopeId && currentHostel && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.5rem 1rem', background: 'white', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginTop: '0.75rem' }}>
+                                    {currentHostel.image ? (
+                                        <img src={currentHostel.image} alt={currentHostel.name} style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} />
+                                    ) : (
+                                        <div style={{ width: '50px', height: '50px', background: '#f1f5f9', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem' }}>No Image</div>
+                                    )}
+                                    <div>
+                                        <h4 style={{ margin: 0, fontSize: '0.95rem' }}>{currentHostel.name}</h4>
+                                        <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>{currentHostel.location || 'No location'}</p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
