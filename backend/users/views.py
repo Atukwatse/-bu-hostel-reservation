@@ -8,7 +8,7 @@ from django.db import models
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from .models import User, UserProfile, LoginActivity, Notification
-from hostels.models import Hostel
+from hostels.models import Hostel, auto_assign_hostel
 from .serializers import (
     UserSerializer, UserRegistrationSerializer, UserLoginSerializer,
     UserUpdateSerializer, PasswordChangeSerializer, LoginActivitySerializer,
@@ -173,14 +173,10 @@ def login_view(request):
         user.last_login = timezone.now()
         user.save()
 
-        # Auto-link a caretaker to their hostel via caretaker_phone on login,
-        # so they land directly on their hostel without a selection step.
-        if user.role == 'caretaker' and not getattr(user, 'managed_hostel', None):
-            matching = Hostel.objects.filter(caretaker_phone=user.phone).first()
-            if matching is not None:
-                Hostel.objects.filter(admin_user=user).update(admin_user=None)
-                matching.admin_user = user
-                matching.save(update_fields=['admin_user'])
+        # Auto-link a caretaker to their hostel on login, so they land directly
+        # on their hostel without a selection step.
+        if user.role == 'caretaker':
+            auto_assign_hostel(user)
 
         return Response({
             'token': token.key,

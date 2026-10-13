@@ -427,7 +427,8 @@
     "hostelSubscriptions": "Hostel Subscriptions",
     "reservations": "Reservations",
     "students": "Students",
-    "managingHostel": "Managing Hostel"
+    "managingHostel": "Managing Hostel",
+    "editHostel": "Edit Hostel"
   },
   "language": {
     "English": "English",

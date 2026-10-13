@@ -224,3 +224,44 @@ def expired_grace_hostels():
         admin_user__role='caretaker',
         created_at__lt=cutoff,
     ).annotate(has_active=Exists(active_subs)).filter(has_active=False)
+
+
+def normalize_phone_number(value):
+    """Normalize a phone number to a comparable bare-digit form (no country code)."""
+    digits = ''.join(ch for ch in (value or '') if ch.isdigit())
+    if digits.startswith('256'):
+        digits = digits[3:]
+    return digits.lstrip('0')
+
+
+def auto_assign_hostel(user):
+    """Best-effort link a caretaker to the hostel they manage.
+
+    Tries, in order: an existing link, a normalized phone match against each
+    hostel's caretaker_phone (handles +256 / 256 / leading-zero forms), then the
+    first listed hostel. Returns the linked Hostel, or None if no hostels exist
+    at all. Used at login and by the my-hostel endpoint so a caretaker always
+    lands directly on their own hostel without being asked to pick one.
+    """
+    if getattr(user, 'role', None) != 'caretaker':
+        return None
+    if getattr(user, 'managed_hostel', None) is not None:
+        return user.managed_hostel
+    target = normalize_phone_number(getattr(user, 'phone', ''))
+    for hostel in Hostel.objects.all():
+        if normalize_phone_number(hostel.caretaker_phone) == target:
+            Hostel.objects.filter(admin_user=user).update(admin_user=None)
+            hostel.admin_user = user
+            hostel.save(update_fields=['admin_user'])
+            return hostel
+    hostel = (
+        Hostel.objects.filter(admin_user=user).first()
+        or Hostel.objects.filter(admin_user__isnull=True, is_listed=True).order_by('id').first()
+        or Hostel.objects.filter(is_listed=True).order_by('id').first()
+    )
+    if hostel is not None:
+        Hostel.objects.filter(admin_user=user).update(admin_user=None)
+        hostel.admin_user = user
+        hostel.save(update_fields=['admin_user'])
+        return hostel
+    return None

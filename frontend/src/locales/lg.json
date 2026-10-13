@@ -427,7 +427,8 @@
     "hostelSubscriptions": "Okwewaayo kwa Ebisulo",
     "reservations": "Okukayinza",
     "students": "Abayizi",
-    "managingHostel": "Guluuka Ekisulo"
+    "managingHostel": "Guluuka Ekisulo",
+    "editHostel": "Kyusa Ekisulo"
   },
   "language": {
     "English": "Lungereza",

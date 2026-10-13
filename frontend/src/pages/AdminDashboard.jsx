@@ -297,9 +297,12 @@ const AdminDashboard = () => {
                 }
             });
             
-            // Default fields
-            if (!formData.has('rating')) formData.append('rating', 0.0);
-            if (!formData.has('reviews')) formData.append('reviews', 0);
+            // Default fields (only required when creating a new hostel; sending
+            // these on edit would reset an existing hostel's rating/reviews).
+            if (!editingHostel) {
+                if (!formData.has('rating')) formData.append('rating', 0.0);
+                if (!formData.has('reviews')) formData.append('reviews', 0);
+            }
             
             // Append image if present and is a File
             if (hostelData.image && typeof hostelData.image !== 'string') {
@@ -1275,6 +1278,11 @@ const AdminDashboard = () => {
                                         <h4 style={{ margin: 0, fontSize: '0.95rem' }}>{currentHostel.name}</h4>
                                         <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>{currentHostel.location || 'No location'}</p>
                                     </div>
+                                    {!isAdmin && (
+                                        <button className="btn-edit" onClick={() => handleEditHostel(currentHostel)} style={{ marginLeft: 'auto' }}>
+                                            {t('admin.editHostel')}
+                                        </button>
+                                    )}
                                 </div>
                             )}
                         </div>

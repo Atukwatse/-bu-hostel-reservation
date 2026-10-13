@@ -104,10 +104,11 @@ class HostelListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Hostel
         fields = [
-            'id', 'name', 'type', 'price', 'gender', 'occupancy', 'rating',
+            'id', 'name', 'type', 'price', 'gender', 'occupancy', 'rating', 'reviews',
             'average_rating', 'caretaker_phone', 'admin_user',
             'admin_user_name', 'admin_user_phone', 'rooms_status', 'image',
-            'is_listed', 'location', 'total_rooms', 'available_rooms', 'created_at'
+            'is_listed', 'location', 'description', 'facilities',
+            'total_rooms', 'available_rooms', 'created_at'
         ]
 
     def get_total_rooms(self, obj):
@@ -183,62 +184,72 @@ class HostelOnboardSerializer(serializers.Serializer):
         return data
 
     def create(self, validated_data):
-        from django.db import transaction
+        from django.db import transaction, IntegrityError
         from users.models import User, UserProfile
         from .models import Hostel, HostelSubscription
 
         email = validated_data['email'].strip().lower()
+        phone = validated_data['phone'].strip()
         if User.objects.filter(email=email).exists():
             raise serializers.ValidationError({'email': 'A user with this email already exists.'})
-
-        with transaction.atomic():
-            raw_name = validated_data['name'].strip()
-            parts = raw_name.split(None, 1)
-            first_name = parts[0] if parts else ''
-            last_name = parts[1] if len(parts) > 1 else ''
-
-            user = User.objects.create_user(
-                username=email,
-                email=email,
-                password=validated_data['password'],
-                first_name=first_name,
-                last_name=last_name,
-                phone=validated_data['phone'].strip(),
-                gender=validated_data.get('gender') or None,
-                role='caretaker',
-            )
-            UserProfile.objects.get_or_create(user=user)
-
-            hostel = Hostel.objects.create(
-                name=validated_data['hostel_name'].strip(),
-                type=validated_data['hostel_type'],
-                price=validated_data['price'].strip(),
-                gender=validated_data['gender_pref'],
-                occupancy=validated_data.get('occupancy') or '0/0 Occupied',
-                rating=0.0,
-                reviews=0,
-                caretaker_phone=validated_data['caretaker_phone'].strip(),
-                admin_user=user,
-                image=validated_data.get('image') or 'room_images/placeholder.jpg',
-                description=validated_data.get('description', ''),
-                facilities=validated_data.get('facilities', ''),
-                location=validated_data.get('location', ''),
-                # The hostel is shown on the site immediately. The caretaker gets
-                # a 4-day grace period to pay the subscription fee; an unpaid
-                # hostel is removed by the grace-period enforcement logic.
-                is_listed=True,
+        if User.objects.filter(phone=phone).exists():
+            raise serializers.ValidationError(
+                {'phone': 'A user with this phone number already exists. Please use a different phone number.'}
             )
 
-            HostelSubscription.objects.create(
-                caretaker=user,
-                hostel=hostel,
-                amount_paid=validated_data['amount_paid'],
-                paid_via=validated_data['paid_via'],
-                transaction_id=validated_data.get('transaction_id', ''),
-                status='pending',
-                receipt_image=validated_data.get('receipt_image'),
-                start_date=validated_data['start_date'],
-                end_date=validated_data['end_date'],
+        try:
+            with transaction.atomic():
+                raw_name = validated_data['name'].strip()
+                parts = raw_name.split(None, 1)
+                first_name = parts[0] if parts else ''
+                last_name = parts[1] if len(parts) > 1 else ''
+
+                user = User.objects.create_user(
+                    username=email,
+                    email=email,
+                    password=validated_data['password'],
+                    first_name=first_name,
+                    last_name=last_name,
+                    phone=phone,
+                    gender=validated_data.get('gender') or None,
+                    role='caretaker',
+                )
+                UserProfile.objects.get_or_create(user=user)
+
+                hostel = Hostel.objects.create(
+                    name=validated_data['hostel_name'].strip(),
+                    type=validated_data['hostel_type'],
+                    price=validated_data['price'].strip(),
+                    gender=validated_data['gender_pref'],
+                    occupancy=validated_data.get('occupancy') or '0/0 Occupied',
+                    rating=0.0,
+                    reviews=0,
+                    caretaker_phone=validated_data['caretaker_phone'].strip(),
+                    admin_user=user,
+                    image=validated_data.get('image') or 'room_images/placeholder.jpg',
+                    description=validated_data.get('description', ''),
+                    facilities=validated_data.get('facilities', ''),
+                    location=validated_data.get('location', ''),
+                    # The hostel is shown on the site immediately. The caretaker gets
+                    # a 4-day grace period to pay the subscription fee; an unpaid
+                    # hostel is removed by the grace-period enforcement logic.
+                    is_listed=True,
+                )
+
+                HostelSubscription.objects.create(
+                    caretaker=user,
+                    hostel=hostel,
+                    amount_paid=validated_data['amount_paid'],
+                    paid_via=validated_data['paid_via'],
+                    transaction_id=validated_data.get('transaction_id', ''),
+                    status='pending',
+                    receipt_image=validated_data.get('receipt_image'),
+                    start_date=validated_data['start_date'],
+                    end_date=validated_data['end_date'],
+                )
+        except IntegrityError:
+            raise serializers.ValidationError(
+                {'email': 'A user with this email or phone number already exists. Please use different details.'}
             )
 
         return {

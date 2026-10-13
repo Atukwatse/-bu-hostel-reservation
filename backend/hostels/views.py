@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Avg
-from .models import Hostel, HostelImage, Room, Review, HostelSubscription, expired_grace_hostels
+from .models import Hostel, HostelImage, Room, Review, HostelSubscription, expired_grace_hostels, auto_assign_hostel
 from .serializers import (
     HostelSerializer, HostelListSerializer, RoomSerializer,
     ReviewSerializer, ReviewCreateSerializer, HostelImageSerializer,
@@ -96,7 +96,10 @@ class HostelViewSet(viewsets.ModelViewSet):
             hostels = self.get_queryset()
             serializer = HostelListSerializer(hostels, many=True, context={'request': request})
             return Response({'is_admin': True, 'hostel': None, 'single': False, 'hostels': serializer.data})
-        hostel = getattr(user, 'managed_hostel', None)
+        # Caretakers are taken straight into their own hostel - the system knows
+        # which one they manage (existing link or auto-assigned), so they are
+        # never shown a "Select Your Hostel" step.
+        hostel = auto_assign_hostel(user)
         if hostel is not None:
             serializer = HostelSerializer(hostel, context={'request': request})
             return Response({'is_admin': False, 'hostel': serializer.data, 'single': True})

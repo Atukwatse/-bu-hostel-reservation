@@ -416,7 +416,7 @@ const Hostels = () => {
 
                                 const priceString = selectedHostel.price || '0';
                                 const totalAmount = parseFloat(priceString.replace(/[^0-9.-]+/g,"")) || 0;
-                                let notesInfo = `Gender: ${document.getElementById('resGender')?.value}, Room Type: ${document.getElementById('resRoomType')?.value}, Room Number: ${document.getElementById('resRoomNumber')?.value || selectedRoom}`;
+                                let notesInfo = `Gender: ${document.getElementById('resGender')?.value}, Room Type: ${document.getElementById('resRoomType')?.value}`;
                                 if (paymentMethod === 'mobile_money') {
                                     notesInfo += `, Payer MoMo Number: ${mmNumber}, Amount Sent: ${mmAmount ? 'UGX ' + Number(mmAmount).toLocaleString() : 'N/A'}, Paid To (Caretaker): ${selectedHostel.caretaker_phone || '0769559707'}, Status: Awaiting admin approval`;
                                 }
@@ -533,31 +533,6 @@ const Hostels = () => {
                                     }}
                                 />
                             </div>
-
-                            <label htmlFor="resRoomNumber">{t('hostels.room')}</label>
-                            <select id="resRoomNumber" required>
-                                <option value="">{t('hostels.selectRoom')}</option>
-                                {(() => {
-                                    if (!selectedHostel) return null;
-                                    const prefix = selectedHostel.name.charAt(0).toUpperCase();
-                                    const roomConfigs = [
-                                        { type: 'Single', capacity: '1 Person', facilities: 'En-suite Bath, Desk, Wi-Fi' },
-                                        { type: 'Double', capacity: '2 People', facilities: 'Shared Bath, Wardrobe, Wi-Fi' },
-                                        { type: 'Dormitory', capacity: '4 People', facilities: 'Common Bath, Lockers, Wi-Fi' },
-                                        { type: 'Double', capacity: '2 People', facilities: 'En-suite Bath, Balcony, Wi-Fi' },
-                                        { type: 'Single', capacity: '1 Person', facilities: 'Premium En-suite, A/C, Wi-Fi' }
-                                    ];
-                                    
-                                    return roomConfigs.map((room, index) => {
-                                        const roomName = `${prefix}${index + 1}`;
-                                        return (
-                                            <option key={index} value={roomName}>
-                                                {roomName} - {room.type} ({room.capacity})
-                                            </option>
-                                        );
-                                    });
-                                })()}
-                            </select>
 
                             <label htmlFor="resRoomType">{t('hostels.type')}</label>
                             <select id="resRoomType" required>

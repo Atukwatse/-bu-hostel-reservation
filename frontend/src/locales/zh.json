@@ -427,7 +427,8 @@
     "hostelSubscriptions": "宿舍订阅",
     "reservations": "预订记录",
     "students": "学生",
-    "managingHostel": "管理宿舍"
+    "managingHostel": "管理宿舍",
+    "editHostel": "编辑宿舍"
   },
   "language": {
     "English": "英语",

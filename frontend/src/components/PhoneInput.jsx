@@ -140,7 +140,7 @@ export const PhoneInput = ({
     style,
 }) => {
     const handleNumberChange = (e) => {
-        onChange({ ...e, target: { ...e.target, value: digitsOnly(e.target.value) } });
+        onChange({ ...e, target: { ...e.target, id, value: digitsOnly(e.target.value) } });
     };
 
     return (

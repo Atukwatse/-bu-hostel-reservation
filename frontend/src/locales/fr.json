@@ -427,7 +427,8 @@
     "hostelSubscriptions": "Abonnements d'Hôtels",
     "reservations": "Réservations",
     "students": "Étudiants",
-    "managingHostel": "Gestion de l'Hôtel"
+    "managingHostel": "Gestion de l'Hôtel",
+    "editHostel": "Modifier l'Hôtel"
   },
   "language": {
     "English": "Anglais",
