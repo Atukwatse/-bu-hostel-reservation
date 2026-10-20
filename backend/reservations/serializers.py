@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.utils import timezone
 from .models import Reservation, Payment, Inquiry, WaitingList
 from hostels.models import Hostel, Room
 
@@ -32,11 +33,12 @@ class ReservationSerializer(serializers.ModelSerializer):
             'is_fully_paid', 'semester', 'academic_year', 'check_in_date',
             'check_out_date', 'booking_date', 'transaction_id', 'special_requests', 'notes', 'receipt_image',
             'passport_photo', 'payments', 'is_active', 'created_at', 'updated_at',
-            'confirmed_at', 'cancelled_at', 'mm_number', 'mm_amount', 'caretaker_phone'
+            'confirmed_at', 'cancelled_at', 'mm_number', 'mm_amount', 'caretaker_phone',
+            'payment_reported_date', 'payment_submitted_at'
         ]
         read_only_fields = [
             'reservation_code', 'user', 'amount_paid', 'created_at',
-            'updated_at', 'confirmed_at', 'cancelled_at'
+            'updated_at', 'confirmed_at', 'cancelled_at', 'payment_submitted_at'
         ]
 
     def validate_hostel(self, value):
@@ -59,7 +61,7 @@ class ReservationCreateSerializer(serializers.ModelSerializer):
             'hostel', 'room', 'payment_method', 'total_amount', 'semester',
             'academic_year', 'check_in_date', 'check_out_date', 'booking_date', 'transaction_id',
             'special_requests', 'notes', 'receipt_image', 'passport_photo',
-            'mm_number', 'mm_amount', 'caretaker_phone'
+            'mm_number', 'mm_amount', 'caretaker_phone', 'payment_reported_date'
         ]
 
     def validate(self, data):
@@ -91,6 +93,8 @@ class ReservationCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data['user'] = self.context['request'].user
+        # Automatically record when the payment details were submitted
+        validated_data['payment_submitted_at'] = timezone.now()
         return super().create(validated_data)
 
 

@@ -532,6 +532,34 @@ const AdminDashboard = () => {
         return match ? match[1].trim() : null;
     };
 
+    // Amount the student actually paid (SMS/entered amount, then approved amount, then 50% deposit)
+    const getPaidAmount = (reservation) => {
+        const mmAmt = Number(reservation.mm_amount) || 0;
+        const approvedAmt = Number(reservation.amount_paid) || 0;
+        if (mmAmt > 0) return mmAmt;
+        if (approvedAmt > 0) return approvedAmt;
+        return Math.round((Number(reservation.total_amount) || 0) * 0.5);
+    };
+
+    // Format any timestamp for the caretaker's table
+    const formatStamp = (raw) => {
+        if (!raw) return null;
+        const d = new Date(raw);
+        if (isNaN(d.getTime())) return raw;
+        return d.toLocaleString('en-GB', {
+            day: '2-digit', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+    };
+
+    // Date/time the student reports they paid (entered in the booking form)
+    const getReportedDate = (reservation) =>
+        formatStamp(reservation.payment_reported_date);
+
+    // System-recorded time the payment details were submitted (never student-editable)
+    const getSubmittedAt = (reservation) =>
+        formatStamp(reservation.payment_submitted_at || reservation.created_at);
+
     const getActivityLabel = (reservation) => {
         switch (reservation.status) {
             case 'cancelled': return { label: 'Booking Cancelled', color: '#ef4444' };
@@ -989,9 +1017,22 @@ const AdminDashboard = () => {
                                     <td>UGX {reservation.total_amount?.toLocaleString()}</td>
                                     <td>
                                         {reservation.transaction_id ? (
-                                            <span style={{ fontFamily: 'monospace', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.85rem', fontWeight: '500', color: '#1e3a8a' }}>
-                                                {reservation.transaction_id}
-                                            </span>
+                                            <div>
+                                                <span style={{ fontFamily: 'monospace', background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '0.85rem', fontWeight: '500', color: '#1e3a8a', display: 'inline-block' }}>
+                                                    {reservation.transaction_id}
+                                                </span>
+                                                <span style={{ display: 'block', color: '#065f46', fontSize: '0.8rem', fontWeight: '600', marginTop: '4px' }}>
+                                                    Amount: UGX {getPaidAmount(reservation).toLocaleString()}
+                                                </span>
+                                                {getReportedDate(reservation) && (
+                                                    <span style={{ display: 'block', color: '#78350f', fontSize: '0.75rem', marginTop: '2px' }}>
+                                                        Paid on (student): {getReportedDate(reservation)}
+                                                    </span>
+                                                )}
+                                                <span style={{ display: 'block', color: '#475569', fontSize: '0.72rem', marginTop: '2px' }}>
+                                                    Submitted: {getSubmittedAt(reservation) || 'N/A'}
+                                                </span>
+                                            </div>
                                         ) : reservation.payment_method === 'mobile_money' ? (
                                             <span style={{ color: '#b45309', fontSize: '0.8rem', fontStyle: 'italic' }}>
                                                 Waiting for approval
@@ -1005,6 +1046,12 @@ const AdminDashboard = () => {
                                                         Amount: UGX {Number(reservation.mm_amount).toLocaleString()}
                                                     </span>
                                                 )}
+                                                <span style={{ display: 'block', color: '#78350f', fontStyle: 'normal' }}>
+                                                    Paid on (student): {getReportedDate(reservation) || 'Not stated'}
+                                                </span>
+                                                <span style={{ display: 'block', color: '#475569', fontStyle: 'normal', fontSize: '0.72rem' }}>
+                                                    Submitted: {getSubmittedAt(reservation) || 'N/A'}
+                                                </span>
                                                 {reservation.caretaker_phone && (
                                                     <span style={{ display: 'block', color: '#78350f', fontStyle: 'normal' }}>
                                                         Paid to: {reservation.caretaker_phone}

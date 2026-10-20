@@ -29,6 +29,7 @@ const Hostels = () => {
     const [mmAmount, setMmAmount] = useState('');
     const [mmSent, setMmSent] = useState(false);
     const [mmError, setMmError] = useState('');
+    const [mmReportedDate, setMmReportedDate] = useState('');
     const [acceptedTerms, setAcceptedTerms] = useState(false);
     const [bookingTermsAccepted, setBookingTermsAccepted] = useState(false);
     const bookingDatePickerRef = useRef(null);
@@ -154,6 +155,13 @@ const Hostels = () => {
         setMmAmount('');
         setMmSent(false);
         setMmError('');
+        setMmReportedDate('');
+    };
+
+    // Local "now" in the same format as <input type="datetime-local">
+    const nowLocal = (date = new Date()) => {
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
     };
 
     const normalizeBookingDate = (value, inputEl) => {
@@ -188,6 +196,10 @@ const Hostels = () => {
         const amt = parseFloat(mmAmount);
         if (!amt || amt <= 0) {
             setMmError(t('hostels.enterAmount'));
+            return;
+        }
+        if (!mmReportedDate) {
+            setMmError(t('hostels.paymentDateRequired'));
             return;
         }
         setMmSent(true);
@@ -418,7 +430,7 @@ const Hostels = () => {
                                 const totalAmount = parseFloat(priceString.replace(/[^0-9.-]+/g,"")) || 0;
                                 let notesInfo = `Gender: ${document.getElementById('resGender')?.value}, Room Type: ${document.getElementById('resRoomType')?.value}`;
                                 if (paymentMethod === 'mobile_money') {
-                                    notesInfo += `, Payer MoMo Number: ${mmNumber}, Amount Sent: ${mmAmount ? 'UGX ' + Number(mmAmount).toLocaleString() : 'N/A'}, Paid To (Caretaker): ${selectedHostel.caretaker_phone || '0769559707'}, Status: Awaiting admin approval`;
+                                    notesInfo += `, Payer MoMo Number: ${mmNumber}, Amount Sent: ${mmAmount ? 'UGX ' + Number(mmAmount).toLocaleString() : 'N/A'}, Paid On (reported): ${mmReportedDate ? mmReportedDate.replace('T', ' ') : 'N/A'}, Paid To (Caretaker): ${selectedHostel.caretaker_phone || '0769559707'}, Status: Awaiting admin approval`;
                                 }
                                 
                                 const bookingDate = (() => {
@@ -467,6 +479,7 @@ const Hostels = () => {
                                     formData.append('mm_number', mmNumber);
                                     formData.append('mm_amount', parseFloat(mmAmount) || 0);
                                     formData.append('caretaker_phone', selectedHostel.caretaker_phone || '0769559707');
+                                    formData.append('payment_reported_date', mmReportedDate || nowLocal());
                                 }
 
                                 const receiptInput = document.getElementById('receiptUpload');
@@ -565,6 +578,9 @@ const Hostels = () => {
                                     if (paymentMethod === 'mobile_money' && next !== 'mobile_money') {
                                         resetMobileMoneyFlow();
                                     }
+                                    if (next === 'mobile_money' && !mmReportedDate) {
+                                        setMmReportedDate(nowLocal());
+                                    }
                                     setPaymentMethod(next);
                                 }} required>
                                     <option value="">{t('hostels.selectMethod')}</option>
@@ -610,6 +626,20 @@ const Hostels = () => {
                                                     style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '0.75rem' }}
                                                 />
 
+                                                <label htmlFor="mmReportedDate" style={{display: 'block', marginBottom: '0.25rem'}}>{t('hostels.paymentDateTime')}</label>
+                                                <input
+                                                    type="datetime-local"
+                                                    id="mmReportedDate"
+                                                    value={mmReportedDate}
+                                                    onChange={(e) => setMmReportedDate(e.target.value)}
+                                                    max={nowLocal()}
+                                                    required
+                                                    style={{ width: '100%', padding: '0.75rem', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '0.35rem' }}
+                                                />
+                                                <p style={{fontSize: '0.75rem', color: '#64748b', margin: '0 0 0.75rem 0', lineHeight: 1.4}}>
+                                                    {t('hostels.paymentDateTimeHelp')}
+                                                </p>
+
                                                 {mmError && (
                                                     <p style={{fontSize: '0.85rem', color: '#ef4444', margin: '0 0 0.75rem 0'}}>{mmError}</p>
                                                 )}
@@ -632,6 +662,11 @@ const Hostels = () => {
                                                 <p style={{margin: '0.75rem 0 0 0', fontSize: '0.85rem', color: '#065f46', lineHeight: 1.5}}>
                                                     {t('hostels.momoConfirmNote', { amount: Number(mmAmount).toLocaleString(), number: mmNumber, phone: selectedHostel.caretaker_phone || '0769559707' })}
                                                 </p>
+                                                {mmReportedDate && (
+                                                    <p style={{margin: '0.35rem 0 0 0', fontSize: '0.82rem', color: '#047857', fontWeight: 600}}>
+                                                        {t('hostels.paidOnLabel')}: {new Date(mmReportedDate).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                    </p>
+                                                )}
                                                 <button
                                                     type="button"
                                                     style={{marginTop: '0.75rem', background: 'none', border: '1px solid #10b981', color: '#065f46', padding: '0.3rem 0.75rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem'}}
