@@ -1,1 +1,1 @@
-hostels
+hostel booking site
